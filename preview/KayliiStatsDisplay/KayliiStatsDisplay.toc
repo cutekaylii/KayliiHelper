@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Kaylii My Stats
+## Notes: Independent Kaylii Helper 2.0 module preview.
+## Author: Kaylii
+## IconTexture: Interface\AddOns\KayliiStatsDisplay\Media\KayliiIcon
+## Version: 2.0.0-alpha.2
+## OptionalDeps: KayliiHelper
+## SavedVariables: KayliiStatsDB
+
+Bootstrap.lua
+StatsDisplay.lua
+Window.lua

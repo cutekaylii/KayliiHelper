@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Kaylii Raid Frame Spec
+## Notes: Independent Kaylii Helper 2.0 module preview.
+## Author: Kaylii
+## IconTexture: Interface\AddOns\KayliiRaidFrameSpec\Media\KayliiIcon
+## Version: 2.0.0-alpha.2
+## OptionalDeps: KayliiHelper, EllesmereUIRaidFrames
+## SavedVariables: KayliiRaidSpecDB
+
+Bootstrap.lua
+RaidFrameSpec.lua
+Window.lua

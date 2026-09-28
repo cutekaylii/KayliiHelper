@@ -1,0 +1,13 @@
+## Interface: 120100
+## Title: Kaylii Survival Helper
+## Notes: Standalone survival recommendations with character-specific priorities and voice text.
+## Author: Kaylii
+## IconTexture: Interface\AddOns\KayliiSurvivalHelper\Media\KayliiIcon
+## Version: 2.0.0-alpha.2
+## OptionalDeps: KayliiHelper
+## SavedVariables: KayliiSurvivalDB
+## SavedVariablesPerCharacter: KayliiSurvivalCharacterDB
+
+Bootstrap.lua
+SurvivalHelper.lua
+Options.lua
