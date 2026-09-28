@@ -1,19 +1,12 @@
 ## Interface: 120100
 ## Title: Kaylii Helper
-## Notes: Modular UI helpers for target auras, lust tracking, survival recommendations, character stats, talent loadouts, and spec-based raid and party frame positioning.
+## Notes: Hub for independently installed Kaylii modules.
 ## Author: Kaylii
 ## IconTexture: Interface\AddOns\KayliiHelper\Media\KayliiIcon
-## Version: 1.19.63
+## Version: 2.0.0-alpha.1
 ## SavedVariables: KayliiHelperDB, BuffWhitelistDB, KayliiHelperProfileBackupDB
 ## SavedVariablesPerCharacter: KayliiHelperCharacterDB, KayliiHelperProfileBackupCharacterDB
-## OptionalDeps: EllesmereUIRaidFrames, Blizzard_ActionBar
+## OptionalDeps: EllesmereUIRaidFrames
 
-Core.lua
-LustUp.lua
-StatsDisplay.lua
-SurvivalHelper.lua
-TalentLoadout.lua
-RaidFrameSpec.lua
+Hub.lua
 MinimapButton.lua
-ProfileTransfer.lua
-Options.lua
