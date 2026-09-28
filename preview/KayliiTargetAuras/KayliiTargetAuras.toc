@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Kaylii Buff White List
+## Notes: Independent Kaylii Helper 2.0 module preview.
+## Author: Kaylii
+## IconTexture: Interface\AddOns\KayliiTargetAuras\Media\KayliiIcon
+## Version: 2.0.0-alpha.2
+## OptionalDeps: KayliiHelper
+## SavedVariables: KayliiTargetAurasDB
+
+Bootstrap.lua
+Core.lua
+Window.lua

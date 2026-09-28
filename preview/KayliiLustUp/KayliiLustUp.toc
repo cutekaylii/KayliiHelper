@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Kaylii Lust Up
+## Notes: Independent Kaylii Helper 2.0 module preview.
+## Author: Kaylii
+## IconTexture: Interface\AddOns\KayliiLustUp\Media\KayliiIcon
+## Version: 2.0.0-alpha.2
+## OptionalDeps: KayliiHelper
+## SavedVariables: KayliiLustDB
+
+Bootstrap.lua
+LustUp.lua
+Window.lua

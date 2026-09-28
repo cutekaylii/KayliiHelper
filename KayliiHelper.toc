@@ -3,7 +3,7 @@
 ## Notes: Hub for independently installed Kaylii modules.
 ## Author: Kaylii
 ## IconTexture: Interface\AddOns\KayliiHelper\Media\KayliiIcon
-## Version: 2.0.0-alpha.1
+## Version: 2.0.0-alpha.2
 ## SavedVariables: KayliiHelperHubDB, KayliiHelperDB, BuffWhitelistDB, KayliiHelperProfileBackupDB
 ## SavedVariablesPerCharacter: KayliiHelperCharacterDB, KayliiHelperProfileBackupCharacterDB
 ## OptionalDeps: EllesmereUIRaidFrames

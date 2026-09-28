@@ -14,7 +14,13 @@ cp "$root_dir/preview/KayliiSurvivalHelper"/{KayliiSurvivalHelper.toc,Bootstrap.
 cp "$root_dir"/Media/KayliiIcon.* "$stage_dir/KayliiSurvivalHelper/Media/"
 cp -a "$root_dir/Media/SurvivalSounds" "$stage_dir/KayliiSurvivalHelper/Media/"
 
+for module in KayliiTargetAuras KayliiLustUp KayliiStatsDisplay KayliiTalentLoadout KayliiRaidFrameSpec; do
+    mkdir -p "$stage_dir/$module/Media"
+    cp "$root_dir/preview/$module"/*.lua "$root_dir/preview/$module"/*.toc "$stage_dir/$module/"
+    cp "$root_dir"/Media/KayliiIcon.* "$stage_dir/$module/Media/"
+done
+
 output_path="${1:-$root_dir/KayliiHelper-2.0-alpha-preview.zip}"
 rm -f "$output_path"
-(cd "$stage_dir" && zip -q -r "$output_path" KayliiHelper KayliiSurvivalHelper)
+(cd "$stage_dir" && zip -q -r "$output_path" KayliiHelper KayliiTargetAuras KayliiLustUp KayliiStatsDisplay KayliiTalentLoadout KayliiRaidFrameSpec KayliiSurvivalHelper)
 echo "$output_path"

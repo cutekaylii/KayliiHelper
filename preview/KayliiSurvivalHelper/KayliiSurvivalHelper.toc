@@ -3,7 +3,7 @@
 ## Notes: Standalone survival recommendations with character-specific priorities and voice text.
 ## Author: Kaylii
 ## IconTexture: Interface\AddOns\KayliiSurvivalHelper\Media\KayliiIcon
-## Version: 2.0.0-alpha.1
+## Version: 2.0.0-alpha.2
 ## OptionalDeps: KayliiHelper
 ## SavedVariables: KayliiSurvivalDB
 ## SavedVariablesPerCharacter: KayliiSurvivalCharacterDB

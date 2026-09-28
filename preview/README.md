@@ -1,22 +1,24 @@
 # Kaylii Helper 2.0 alpha preview
 
-This branch demonstrates the hub and a standalone Survival Helper. It is a
-development preview. The other five modules and the combined profile transfer
-are not included yet, so it must not replace the current 1.19.63 release.
+This package contains the hub and six independently loadable addon folders:
+KayliiTargetAuras, KayliiLustUp, KayliiStatsDisplay, KayliiTalentLoadout,
+KayliiRaidFrameSpec, and KayliiSurvivalHelper. It is an alpha preview built
+from the latest stable 1.19.63 runtime. It has not been tested inside WoW;
+keep a backup of the original addon and WTF folder before trying it.
 
-The hub stores its own minimap preferences in `KayliiHelperHubDB`. It loads
-the old `KayliiHelperDB` and `KayliiHelperCharacterDB` tables for migration
-without editing them. `KayliiSurvivalHelper` saves its own account and
-per-character data.
-At load time, it copies missing `survival*` fields from the 1.x tables if the
-hub is installed. An already saved 2.x field always wins. The original tables
-remain available for the other modules' migrations.
+The hub saves its minimap preferences in `KayliiHelperHubDB` and loads old
+1.x tables so each module can copy its settings. Each standalone module saves
+in its own account table; Survival Helper also saves per-character values in
+its own character table. An already saved 2.x value always wins. The Target
+Auras copy runs initialization against its own table, never the old table.
 
-The standalone module keeps `/khsurvival` and `/khsurv`. The hub keeps `/kh`,
-`/kaylii`, and `/kayliihelper`. The standalone module runs without the hub,
-though it cannot automatically read old 1.x saved data without the hub loading
-those tables first.
+The hub keeps `/kh`, `/kaylii`, and `/kayliihelper`. Module commands are
+`/kaybuff`, `/kaylust`, `/kaystats`, `/kaytalent`, and `/kayraidspec`;
+Survival Helper keeps `/khsurvival` and `/khsurv`. Modules work on their own,
+but need the hub installed to read 1.x settings during migration.
 
-The preview's settings pages are Trigger, Priority, Ready alerts, Death sound,
-and Appearance. Action order, custom spells/items, and per-action TTS phrases
-retain their character scope. This preview has not been validated inside WoW.
+The five new modules provide their own dark settings windows with tabs and
+minimize buttons. Survival Helper includes Trigger, Priority, Ready alerts,
+Death sound, and Appearance; its action order, custom actions, and per-action
+TTS phrases retain character scope. The new windows cover the primary controls;
+some advanced controls from 1.x and combined profile transfer are still to do.
