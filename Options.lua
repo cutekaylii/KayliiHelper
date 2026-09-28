@@ -848,6 +848,143 @@ moduleUI.CreateChoiceDropdown = function(parent, x, y, width, choices, onSelect)
     return button
 end
 
+moduleUI.ShowProfileTransferDialog = function(mode)
+    if not moduleUI.profileTransferDialog then
+        local frame = CreateFrame(
+            "Frame",
+            "KayliiHelperProfileTransferDialog",
+            UIParent,
+            "BackdropTemplate"
+        )
+        frame:SetSize(700, 460)
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+        frame:SetFrameStrata("DIALOG")
+        frame:SetFrameLevel(600)
+        frame:SetClampedToScreen(true)
+        frame:EnableMouse(true)
+        ApplyBackdrop(frame, THEME.panel, THEME.borderAccent)
+
+        local title = Label(frame, "Profile Transfer", "GameFontNormalHuge")
+        title:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -18)
+        SetFontColor(title, THEME.text)
+        frame.Title = title
+
+        local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        close:SetSize(30, 28)
+        close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -14, -14)
+        close:SetText("X")
+        close:SetScript("OnClick", function() frame:Hide() end)
+        SkinButton(close)
+
+        local help = Label(frame, "", "GameFontHighlightSmall")
+        help:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+        help:SetWidth(650)
+        help:SetJustifyH("LEFT")
+        SetFontColor(help, THEME.subtext)
+        frame.Help = help
+
+        local scroll = CreateFrame(
+            "ScrollFrame",
+            nil,
+            frame,
+            "UIPanelScrollFrameTemplate"
+        )
+        scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -82)
+        scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -40, 76)
+        ApplyBackdrop(scroll, { 0.035, 0.05, 0.075, 1 }, THEME.border)
+
+        local editBox = CreateFrame("EditBox", nil, scroll)
+        editBox:SetMultiLine(true)
+        editBox:SetAutoFocus(false)
+        editBox:SetFontObject(ChatFontNormal)
+        editBox:SetWidth(622)
+        editBox:SetTextInsets(8, 8, 8, 8)
+        editBox:SetJustifyH("LEFT")
+        editBox:SetJustifyV("TOP")
+        editBox:EnableMouse(true)
+        editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+        editBox:SetScript("OnTextChanged", function(self)
+            local height = math.max(292, (self:GetNumLines() or 1) * 16 + 20)
+            self:SetHeight(height)
+        end)
+        scroll:SetScrollChild(editBox)
+        frame.EditBox = editBox
+
+        local status = Label(frame, "", "GameFontHighlightSmall")
+        status:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 20, 52)
+        status:SetWidth(450)
+        status:SetJustifyH("LEFT")
+        frame.Status = status
+
+        local action = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        action:SetSize(142, 30)
+        action:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -20, 18)
+        SkinButton(action)
+        frame.Action = action
+
+        local cancel = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+        cancel:SetSize(92, 30)
+        cancel:SetPoint("RIGHT", action, "LEFT", -8, 0)
+        cancel:SetText("Close")
+        cancel:SetScript("OnClick", function() frame:Hide() end)
+        SkinButton(cancel)
+
+        frame:SetScript("OnShow", function()
+            frame:Raise()
+        end)
+        moduleUI.profileTransferDialog = frame
+    end
+
+    local frame = moduleUI.profileTransferDialog
+    frame.Mode = mode == "import" and "import" or "export"
+    frame.Status:SetText("")
+    if frame.Mode == "export" then
+        frame.Title:SetText("Export Profile")
+        frame.Help:SetText(
+            "Copy this opaque profile string. It contains shared settings and this character's saved settings."
+        )
+        local text, message = BW:ExportProfileString()
+        frame.EditBox:SetText(text or "")
+        frame.Action:SetText("Select all")
+        frame.Action:SetScript("OnClick", function()
+            frame.EditBox:SetFocus()
+            frame.EditBox:HighlightText()
+        end)
+        if not text then
+            frame.Status:SetText(tostring(message or "Profile export failed."))
+            SetFontColor(frame.Status, { 1.00, 0.42, 0.42, 1 })
+        end
+        C_Timer.After(0, function()
+            if frame:IsShown() then
+                frame.EditBox:SetFocus()
+                frame.EditBox:HighlightText()
+            end
+        end)
+    else
+        frame.Title:SetText("Import Profile")
+        frame.Help:SetText(
+            "Paste a Kaylii Helper profile string. A rollback copy of current settings is saved before import."
+        )
+        frame.EditBox:SetText("")
+        frame.Action:SetText("Import & Reload")
+        frame.Action:SetScript("OnClick", function()
+            local ok, message = BW:ImportProfileString(frame.EditBox:GetText())
+            frame.Status:SetText(tostring(message or ""))
+            SetFontColor(
+                frame.Status,
+                ok and THEME.accent or { 1.00, 0.42, 0.42, 1 }
+            )
+            if ok and ReloadUI then
+                ReloadUI()
+            end
+        end)
+        C_Timer.After(0, function()
+            if frame:IsShown() then frame.EditBox:SetFocus() end
+        end)
+    end
+    frame:Show()
+end
+
 local function Checkbox(parent, text, x, y, callback)
     local check = CreateFrame(
         "CheckButton",
@@ -3942,9 +4079,37 @@ local function BuildRootPanel()
         0,
         -10
     )
-    desc:SetWidth(780)
+    desc:SetWidth(500)
     desc:SetJustifyH("LEFT")
     SetFontColor(desc, THEME.subtext)
+
+    local exportProfile = CreateFrame(
+        "Button",
+        nil,
+        rootPanel,
+        "UIPanelButtonTemplate"
+    )
+    exportProfile:SetSize(112, 28)
+    exportProfile:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -154, -72)
+    exportProfile:SetText("Export profile")
+    exportProfile:SetScript("OnClick", function()
+        moduleUI.ShowProfileTransferDialog("export")
+    end)
+    SkinButton(exportProfile)
+
+    local importProfile = CreateFrame(
+        "Button",
+        nil,
+        rootPanel,
+        "UIPanelButtonTemplate"
+    )
+    importProfile:SetSize(112, 28)
+    importProfile:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -34, -72)
+    importProfile:SetText("Import profile")
+    importProfile:SetScript("OnClick", function()
+        moduleUI.ShowProfileTransferDialog("import")
+    end)
+    SkinButton(importProfile)
 
     local buffTitle = Label(
         rootPanel,
