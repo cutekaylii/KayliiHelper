@@ -4,9 +4,10 @@ This branch demonstrates the hub and a standalone Survival Helper. It is a
 development preview. The other five modules and the combined profile transfer
 are not included yet, so it must not replace the current 1.19.63 release.
 
-The `KayliiHelper` addon retains the old `KayliiHelperDB` and
-`KayliiHelperCharacterDB` tables without deleting or editing their module
-settings. `KayliiSurvivalHelper` saves its own account and per-character data.
+The hub stores its own minimap preferences in `KayliiHelperHubDB`. It loads
+the old `KayliiHelperDB` and `KayliiHelperCharacterDB` tables for migration
+without editing them. `KayliiSurvivalHelper` saves its own account and
+per-character data.
 At load time, it copies missing `survival*` fields from the 1.x tables if the
 hub is installed. An already saved 2.x field always wins. The original tables
 remain available for the other modules' migrations.

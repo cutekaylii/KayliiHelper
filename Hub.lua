@@ -1,6 +1,8 @@
 local ADDON_NAME, BW = ...
 
 -- Retain the complete 1.x tables for each standalone module's migration.
+-- Hub preferences live in a separate table so even moving the minimap icon
+-- cannot overwrite an old 1.x setting.
 _G.KayliiHelper2 = BW
 BW.modules = {}
 
@@ -194,11 +196,9 @@ events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
 events:SetScript("OnEvent", function(_, event, addon)
     if event == "ADDON_LOADED" and addon == ADDON_NAME then
-        KayliiHelperDB = KayliiHelperDB or BuffWhitelistDB or {}
-        BuffWhitelistDB = KayliiHelperDB
-        KayliiHelperCharacterDB = KayliiHelperCharacterDB or {}
-        BW.db = KayliiHelperDB
-        BW.characterDB = KayliiHelperCharacterDB
+        KayliiHelperHubDB = type(KayliiHelperHubDB) == "table"
+            and KayliiHelperHubDB or {}
+        BW.db = KayliiHelperHubDB
         if BW.db.minimapButtonShown == nil then BW.db.minimapButtonShown = true end
     elseif event == "PLAYER_LOGIN" then
         if BW.InitializeMinimapButton then BW:InitializeMinimapButton() end
