@@ -1,0 +1,27 @@
+Kaylii Helper License
+Copyright (c) 2026 Kaylii. All rights reserved.
+
+Kaylii Helper is provided free of charge for personal use with World of Warcraft.
+
+Permission is granted to:
+- Download and use unmodified copies of Kaylii Helper for personal gameplay.
+- Install Kaylii Helper through authorized addon distribution platforms and addon managers.
+- Share links to the official project or authorized download locations.
+
+Without prior written permission from Kaylii, you may not:
+- Modify, alter, adapt, or create derivative works from the source code.
+- Repackage, redistribute, mirror, or re-upload the addon or its source code.
+- Publish modified or unmodified copies under another project, name, or author.
+- Sell, sublicense, rent, or otherwise commercially distribute the addon.
+- Remove or alter copyright, author, or license notices.
+
+Authorized distribution platforms may host and distribute the unmodified addon package
+when the project is uploaded or authorized by Kaylii.
+
+World of Warcraft and related names and assets are trademarks or copyrights of Blizzard
+Entertainment, Inc. Kaylii Helper is not affiliated with or endorsed by Blizzard Entertainment.
+
+THE ADDON IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM,
+DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE ADDON.
