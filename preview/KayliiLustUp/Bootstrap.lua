@@ -1,9 +1,32 @@
 local ADDON_NAME, module = ...
 local defaults = {
-    lustUpEnabled = true,
-    lustUpCustomLockouts = {},
+    lustUpAllowDrums = false,
+    lustUpBossPullVoiceEnabled = true,
+    lustUpBossPullVoiceText = "Lust off cooldown",
     lustUpCustomDrumItems = {},
+    lustUpCustomLockouts = {},
+    lustUpDisplayMode = "ready",
+    lustUpEnabled = true,
+    lustUpIconSpellID = 2825,
+    lustUpIndicatorClickable = false,
+    lustUpLockedAlpha = 100,
+    lustUpOnlyInCombat = false,
+    lustUpOnlyInInstance = false,
+    lustUpPoint = "CENTER",
+    lustUpReadyAlpha = 100,
+    lustUpReadyChatChannel = "OFF",
+    lustUpReadyGlow = false,
+    lustUpReadyVoiceText = "Lust up",
+    lustUpRequireLustAbility = false,
+    lustUpShowInDungeons = true,
+    lustUpShowInRaids = true,
+    lustUpSize = 48,
+    lustUpUnlocked = false,
+    lustUpVoiceEnabled = true,
+    lustUpX = 0,
+    lustUpY = -160,
 }
+
 
 local function Copy(value)
     if type(value) ~= "table" then return value end

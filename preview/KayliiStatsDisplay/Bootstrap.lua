@@ -1,12 +1,27 @@
 local ADDON_NAME, module = ...
 local defaults = {
-    statsModuleEnabled = false,
+    statsCritColor = { 1.00, 0.42, 0.35, 1 },
     statsFontSize = 14,
+    statsHasteColor = { 0.35, 0.85, 0.45, 1 },
+    statsMasteryColor = { 0.67, 0.48, 1.00, 1 },
+    statsModuleEnabled = false,
+    statsOnlyInCombat = false,
+    statsOnlyInInstance = false,
+    statsOnlyOutOfCombat = false,
+    statsOrientation = "horizontal",
+    statsPoint = "CENTER",
+    statsShowBackground = true,
     statsShowCrit = true,
     statsShowHaste = true,
     statsShowMastery = true,
     statsShowVersatility = true,
+    statsTextAlign = "center",
+    statsUnlocked = false,
+    statsVersatilityColor = { 0.30, 0.72, 1.00, 1 },
+    statsX = 0,
+    statsY = -220,
 }
+
 
 local function Copy(value)
     if type(value) ~= "table" then return value end

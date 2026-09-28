@@ -2,10 +2,17 @@ local ADDON_NAME, module = ...
 local defaults = {
     talentLoadoutEnabled = false,
     talentLoadoutFontSize = 14,
-    talentLoadoutShowSpec = true,
-    talentLoadoutShowName = true,
+    talentLoadoutOrientation = "vertical",
+    talentLoadoutPoint = "CENTER",
+    talentLoadoutShowBackground = true,
     talentLoadoutShowHero = true,
+    talentLoadoutShowName = true,
+    talentLoadoutShowSpec = true,
+    talentLoadoutUnlocked = false,
+    talentLoadoutX = 260,
+    talentLoadoutY = -220,
 }
+
 
 local function Copy(value)
     if type(value) ~= "table" then return value end

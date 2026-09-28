@@ -1,6 +1,7 @@
 """Build five standalone 2.0 preview folders from the stable 1.19.63 code."""
 from pathlib import Path
 import shutil
+import re
 
 root = Path(__file__).resolve().parents[1]
 preview = root / "preview"
@@ -121,17 +122,35 @@ for m in modules:
     (directory / m["runtime"]).write_text(source)
     prefix = m["prefix"]
     matching = (f'type(key) == "string" and key:sub(1, {len(prefix)}) == "{prefix}"')
+    aura_keys = set()
+    core_source = (root / "Core.lua").read_text()
+    defaults_source = core_source.split("local defaults = {", 1)[1].split("\n}\n\nlocal function CopyDefaults", 1)[0]
+    full_defaults = {}
+    for line in defaults_source.splitlines():
+        match = re.match(r"^    (\w+) = (.+),$", line)
+        if match:
+            full_defaults[match[1]] = match[2]
     if m["id"] == "buff":
-        matching = ('(type(key) == "string" and (key:match("^buff") or key:match("^debuff") '
-                    'or key:match("^onlyMy") or key:match("^useBuff") or key:match("^useDebuff") '
-                    'or key:match("^showBuff") or key:match("^showDebuff") or key:match("^hideBuff") '
-                    'or key:match("^hideDebuff") or key:match("^applyToFocus") or key:match("^iconSize") '
-                    'or key:match("^showImportantBoss") or key:match("^showLayoutPreview")))')
+        aura_keys = {key for key in full_defaults if key.startswith((
+            "buff", "debuff", "onlyMy", "useBuff", "useDebuff", "showBuff",
+            "showDebuff", "hideBuff", "hideDebuff", "hidePermanent", "applyToFocus",
+            "iconSize", "showImportantBoss", "showLayoutPreview"))}
+        aura_keys.update(("buffs", "debuffs", "buffBlacklist", "debuffBlacklist"))
+        matching = 'type(key) == "string" and migrationKeys[key] == true'
     elif m["id"] == "raidspec":
         matching = '(type(key) == "string" and (key:match("^raidFrameSpec") or key:match("^partyFrameSpec")))'
     if m["id"] == "buff":
-        matching += ' or key == "buffs" or key == "debuffs"'
-    defaults = '\n'.join(f'    {k} = {literal(v)},' for k,v in m["extra_defaults"].items())
+        selected = aura_keys
+    elif m["id"] == "raidspec":
+        selected = {key for key in full_defaults if key.startswith(("raidFrameSpec", "partyFrameSpec"))}
+    else:
+        selected = {key for key in full_defaults if key.startswith(prefix)}
+    selected.update(m["extra_defaults"])
+    defaults = '\n'.join(f'    {key} = {full_defaults.get(key, literal(m["extra_defaults"].get(key)))},'
+                         for key in sorted(selected))
+    migration_keys = ('local migrationKeys = {\n' +
+                      '\n'.join(f'    {key} = true,' for key in sorted(aura_keys)) +
+                      '\n}\n') if aura_keys else ''
     pages = '\n'.join('    { title = '+literal(name)+', rows = {\n' +
                       '\n'.join('        { '+', '.join(literal(value) for value in row)+' },' for row in rows) +
                       '\n    } },' for name, rows in m["pages"])
@@ -139,6 +158,7 @@ for m in modules:
 local defaults = {{
 {defaults}
 }}
+{migration_keys}
 
 local function Copy(value)
     if type(value) ~= "table" then return value end

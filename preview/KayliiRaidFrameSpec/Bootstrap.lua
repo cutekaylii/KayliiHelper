@@ -1,18 +1,22 @@
 local ADDON_NAME, module = ...
 local defaults = {
-    raidFrameSpecEnabled = false,
-    raidFrameSpecManageRaid = true,
-    raidFrameSpecManageParty = true,
-    raidFrameSpecPositions = {},
-    partyFrameSpecPositions = {},
-    partyFrameSpecOrientations = {},
     partyFrameSpecCustomEnabled = {},
-    raidFrameSpecScaleEnabled = {},
-    raidFrameSpecScaleValues = {},
+    partyFrameSpecCustomEnabledMigrated = false,
+    partyFrameSpecOrientations = {},
+    partyFrameSpecPositions = {},
     partyFrameSpecScaleEnabled = {},
     partyFrameSpecScaleValues = {},
+    raidFrameSpecBaselineVersion = 0,
     raidFrameSpecEllesmereDefaults = {},
+    raidFrameSpecEnabled = false,
+    raidFrameSpecManageParty = true,
+    raidFrameSpecManageRaid = true,
+    raidFrameSpecNativePositions = false,
+    raidFrameSpecPositions = {},
+    raidFrameSpecScaleEnabled = {},
+    raidFrameSpecScaleValues = {},
 }
+
 
 local function Copy(value)
     if type(value) ~= "table" then return value end
