@@ -1871,11 +1871,11 @@ function BW:ApplyLustUpSettings()
 
     ApplyIndicatorIcon()
 
-    if self:IsLustUpActive() then
+    if self.db.lustUpEnabled and self:IsLustUpActive() then
         self:StartLustUpTicker()
         self:UpdateLustUpState()
 
-    elseif self.db.lustUpUnlocked then
+    elseif self.db.lustUpEnabled and self.db.lustUpUnlocked then
         -- Positioning preview only: do not run Lust tracking just because the
         -- indicator is unlocked, but do keep the icon visible and draggable.
         self:StopLustUpTicker()
