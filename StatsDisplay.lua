@@ -458,8 +458,14 @@ function BW:UpdateStatsDisplay()
         -11,
         0
     )
+    frame.text:SetPoint("TOP", frame, "TOP", 0, -8)
+    frame.text:SetPoint("BOTTOM", frame, "BOTTOM", 0, 8)
     frame.text:SetJustifyH(string.upper(align))
-    frame.text:SetJustifyV("MIDDLE")
+    frame.text:SetJustifyV(
+        vertical
+            and string.upper(self.db.statsVerticalAlign or "middle")
+            or "MIDDLE"
+    )
 
     if self.db.statsShowBackground then
         frame:SetBackdropColor(0.035, 0.055, 0.09, 0.88)

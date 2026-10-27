@@ -7,7 +7,7 @@ local STATS_PANEL_NAME = "My Stats"
 local SURVIVAL_PANEL_NAME = "Survival Helper"
 local TALENT_PANEL_NAME = "Talent Loadout"
 local RAID_SPEC_PANEL_NAME = "Raid Frame Spec"
-local ROW_HEIGHT = 38
+local ROW_HEIGHT = 44
 
 local helperWindow
 local helperContent
@@ -87,8 +87,8 @@ local hidePermanentDebuffsCheck
 local showImportantBossBuffsCheck
 local showDebuffRedBorderCheck
 
-local previewCheck
 local iconSizeSlider
+local previewCheck
 
 local lustUpEnabledCheck
 local lustUpVoiceCheck
@@ -100,8 +100,6 @@ local lustUpOnlyInInstanceCheck
 local lustUpUnlockCheck
 local lustUpModeButton
 local lustUpSizeSlider
-local lustUpStatusText
-local lustUpCustomListText
 local lustUpCustomBox
 
 local rootBuffEnabledCheck
@@ -117,20 +115,6 @@ local buffColumnsBox
 local buffRowsBox
 local debuffColumnsBox
 local debuffRowsBox
-
-local buffGrowLeftButton
-local buffGrowRightButton
-local buffGrowUpButton
-local buffGrowDownButton
-
-local debuffGrowLeftButton
-local debuffGrowRightButton
-local debuffGrowUpButton
-local debuffGrowDownButton
-
-local detachedButton
-local aboveButton
-local belowButton
 
 local targetText
 local statusText
@@ -158,23 +142,37 @@ end
 
 
 local THEME = {
-    -- Kaylii blue theme.
-    accent = { 0.20, 0.58, 1.00, 1 },
-    accentHover = { 0.32, 0.68, 1.00, 1 },
-    text = { 0.96, 0.98, 1.00, 1 },
-    subtext = { 0.72, 0.79, 0.88, 1 },
-    muted = { 0.47, 0.55, 0.66, 1 },
-    panel = { 0.035, 0.055, 0.085, 0.98 },
-    panelAlt = { 0.055, 0.075, 0.115, 0.98 },
-    section = { 0.07, 0.095, 0.145, 0.95 },
-    button = { 0.065, 0.105, 0.175, 0.98 },
-    buttonHover = { 0.08, 0.18, 0.32, 0.98 },
-    buttonActive = { 0.055, 0.22, 0.44, 0.99 },
-    border = { 0.14, 0.23, 0.35, 1 },
-    borderAccent = { 0.10, 0.38, 0.82, 1 },
+    -- Lift the surfaces out of near-black while keeping Kaylii's navy/blue look.
+    accent = { 0.03, 0.42, 1.00, 1 },
+    accentHover = { 0.20, 0.59, 1.00, 1 },
+    text = { 0.95, 0.97, 1.00, 1 },
+    subtext = { 0.69, 0.78, 0.90, 1 },
+    muted = { 0.47, 0.59, 0.73, 1 },
+    panel = { 0.055, 0.105, 0.16, 1 },
+    panelAlt = { 0.045, 0.09, 0.14, 1 },
+    section = { 0.065, 0.12, 0.18, 1 },
+    button = { 0.075, 0.135, 0.20, 1 },
+    buttonHover = { 0.025, 0.34, 0.76, 1 },
+    buttonActive = { 0.0, 0.40, 0.96, 1 },
+    border = { 0.18, 0.27, 0.37, 1 },
+    borderAccent = { 0.03, 0.39, 0.88, 1 },
 }
 
 local THEME_BACKDROP = {
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
+}
+
+THEME.flatSectionBackdrop = {
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 1,
+    insets = { left = 1, right = 1, top = 1, bottom = 1 },
+}
+
+THEME.flatControlBackdrop = {
     bgFile = "Interface\\Buttons\\WHITE8X8",
     edgeFile = "Interface\\Buttons\\WHITE8X8",
     edgeSize = 1,
@@ -187,12 +185,12 @@ local function SetFontColor(fs, color)
     end
 end
 
-local function ApplyBackdrop(frame, bg, border)
+local function ApplyBackdrop(frame, bg, border, backdrop)
     if not frame or not frame.SetBackdrop then return end
-    frame:SetBackdrop(THEME_BACKDROP)
+    frame:SetBackdrop(backdrop or THEME_BACKDROP)
     bg = bg or THEME.section
     border = border or THEME.border
-    frame:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] or 1)
+    frame:SetBackdropColor(bg[1], bg[2], bg[3], 1)
     frame:SetBackdropBorderColor(border[1], border[2], border[3], border[4] or 1)
 end
 
@@ -238,14 +236,8 @@ local function SetButtonBorderColor(button, color)
     if not button or not button._khBorders then
         return
     end
-
     for _, edge in ipairs(button._khBorders) do
-        edge:SetColorTexture(
-            color[1],
-            color[2],
-            color[3],
-            color[4] or 1
-        )
+        edge:SetVertexColor(color[1], color[2], color[3], color[4] or 1)
     end
 end
 
@@ -267,7 +259,7 @@ local function ApplyButtonVisual(button, state)
         border = THEME.accentHover
         textColor = THEME.text
     elseif state == "disabled" then
-        bg = { 0.055, 0.07, 0.10, 0.86 }
+        bg = { 0.055, 0.07, 0.10, 1 }
         border = THEME.border
         textColor = THEME.muted
     else
@@ -275,9 +267,20 @@ local function ApplyButtonVisual(button, state)
         border = THEME.border
     end
 
-    button._khBg:SetColorTexture(
-        bg[1], bg[2], bg[3], bg[4] or 1
-    )
+    if button._khNavStyle then
+        if state == "active" then
+            border = { THEME.accent[1], THEME.accent[2], THEME.accent[3], 0 }
+        elseif state == "hover" then
+            bg = { 0.12, 0.20, 0.30, 1 }
+            border = { THEME.border[1], THEME.border[2], THEME.border[3], 0 }
+        else
+            bg = { 0, 0, 0, 0 }
+            border = { THEME.border[1], THEME.border[2], THEME.border[3], 0 }
+            if state == "normal" then textColor = THEME.subtext end
+        end
+    end
+
+    button._khBg:SetVertexColor(bg[1], bg[2], bg[3], bg[4] or 1)
     SetButtonBorderColor(button, border)
     SetButtonFontColor(button, textColor)
 end
@@ -299,7 +302,6 @@ local function SkinButton(button)
     end
 
     HideBlizzardButtonArtwork(button)
-
     if button.SetNormalFontObject and GameFontHighlight then
         button:SetNormalFontObject(GameFontHighlight)
     end
@@ -311,31 +313,37 @@ local function SkinButton(button)
     end
 
     local bg = button:CreateTexture(nil, "BACKGROUND")
-    bg:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
-    bg:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+    bg:SetAllPoints(button)
+    bg:SetColorTexture(1, 1, 1, 1)
+    if bg.SetSnapToPixelGrid then bg:SetSnapToPixelGrid(true) end
+    if bg.SetTexelSnappingBias then bg:SetTexelSnappingBias(0) end
     button._khBg = bg
 
     local top = button:CreateTexture(nil, "BORDER")
+    top:SetColorTexture(1, 1, 1, 1)
     top:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
     top:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
     top:SetHeight(1)
-
     local bottom = button:CreateTexture(nil, "BORDER")
+    bottom:SetColorTexture(1, 1, 1, 1)
     bottom:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
     bottom:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
     bottom:SetHeight(1)
-
     local left = button:CreateTexture(nil, "BORDER")
+    left:SetColorTexture(1, 1, 1, 1)
     left:SetPoint("TOPLEFT", button, "TOPLEFT", 0, 0)
     left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", 0, 0)
     left:SetWidth(1)
-
     local right = button:CreateTexture(nil, "BORDER")
+    right:SetColorTexture(1, 1, 1, 1)
     right:SetPoint("TOPRIGHT", button, "TOPRIGHT", 0, 0)
     right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 0, 0)
     right:SetWidth(1)
-
     button._khBorders = { top, bottom, left, right }
+    for _, edge in ipairs(button._khBorders) do
+        if edge.SetSnapToPixelGrid then edge:SetSnapToPixelGrid(true) end
+        if edge.SetTexelSnappingBias then edge:SetTexelSnappingBias(0) end
+    end
     button._khStyled = true
 
     ApplyButtonVisual(
@@ -396,12 +404,12 @@ local function SetButtonActiveState(button, active)
     end
 end
 
-local function SkinCheckbox(check, label)
+local function SkinCheckbox(check, label, compact)
     if not check or check._khStyled then
         return
     end
 
-    check:SetSize(22, 22)
+    check:SetSize(compact and 22 or 38, compact and 22 or 20)
 
     local regions = { check:GetRegions() }
     for _, region in ipairs(regions) do
@@ -419,68 +427,65 @@ local function SkinCheckbox(check, label)
     check:SetHighlightTexture("")
     check:SetDisabledTexture("")
 
-    local box = CreateFrame("Frame", nil, check, "BackdropTemplate")
-    box:SetAllPoints(check)
-    box:SetFrameLevel(check:GetFrameLevel())
-    ApplyBackdrop(box, { 0.05, 0.07, 0.10, 0.98 }, THEME.border)
-
-    local hover = box:CreateTexture(nil, "ARTWORK")
-    hover:SetAllPoints(box)
-    hover:SetColorTexture(
-        THEME.accentHover[1],
-        THEME.accentHover[2],
-        THEME.accentHover[3],
-        0.10
-    )
-    hover:Hide()
-
-    local fill = box:CreateTexture(nil, "OVERLAY")
-    fill:SetPoint("TOPLEFT", box, "TOPLEFT", 4, -4)
-    fill:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -4, 4)
-    fill:SetColorTexture(
-        THEME.accent[1],
-        THEME.accent[2],
-        THEME.accent[3],
-        0.95
-    )
-
-    local gloss = box:CreateTexture(nil, "OVERLAY")
-    gloss:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, 0)
-    gloss:SetPoint("TOPRIGHT", fill, "TOPRIGHT", 0, 0)
-    gloss:SetHeight(5)
-    gloss:SetColorTexture(1, 1, 1, 0.16)
+    local track
+    local thumb
+    local hover
+    if compact then
+        track = CreateFrame("Frame", nil, check, "BackdropTemplate")
+        track:SetAllPoints(check)
+        track:SetFrameLevel(check:GetFrameLevel())
+        ApplyBackdrop(track, THEME.panelAlt, THEME.border)
+        thumb = track:CreateTexture(nil, "OVERLAY")
+        thumb:SetPoint("TOPLEFT", track, "TOPLEFT", 4, -4)
+        thumb:SetPoint("BOTTOMRIGHT", track, "BOTTOMRIGHT", -4, 4)
+        thumb:SetColorTexture(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.95)
+    else
+        track = check:CreateTexture(nil, "BACKGROUND")
+        track:SetAllPoints(check)
+        track:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+        track:SetVertexColor(0.14, 0.20, 0.29, 1)
+        thumb = check:CreateTexture(nil, "ARTWORK")
+        thumb:SetSize(16, 16)
+        thumb:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchKnob.tga")
+    end
+    hover = check:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAllPoints(check)
+    if compact then
+        hover:SetColorTexture(THEME.accentHover[1], THEME.accentHover[2], THEME.accentHover[3], 0.10)
+    else
+        hover:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+        hover:SetVertexColor(THEME.accentHover[1], THEME.accentHover[2], THEME.accentHover[3], 0.12)
+    end
 
     local function UpdateCheckboxVisual(self)
         local enabled = self.IsEnabled and self:IsEnabled()
         local checked = self:GetChecked()
 
-        if checked then
-            fill:Show()
-            gloss:Show()
-            box:SetBackdropBorderColor(
-                THEME.accent[1],
-                THEME.accent[2],
-                THEME.accent[3],
-                1
-            )
+        if compact then
+            if checked then
+                thumb:Show()
+                track:SetBackdropBorderColor(THEME.accent[1], THEME.accent[2], THEME.accent[3], 1)
+            else
+                thumb:Hide()
+                track:SetBackdropBorderColor(THEME.border[1], THEME.border[2], THEME.border[3], THEME.border[4])
+            end
         else
-            fill:Hide()
-            gloss:Hide()
-            box:SetBackdropBorderColor(
-                THEME.border[1],
-                THEME.border[2],
-                THEME.border[3],
-                THEME.border[4]
-            )
+            if checked then track:SetVertexColor(0.0, 0.43, 1.0, 1)
+            else track:SetVertexColor(0.14, 0.20, 0.29, 1) end
+            thumb:ClearAllPoints()
+            if checked then thumb:SetPoint("RIGHT", check, "RIGHT", -2, 0)
+            else thumb:SetPoint("LEFT", check, "LEFT", 2, 0) end
         end
 
         if not enabled then
-            box:SetAlpha(0.45)
+            track:SetAlpha(0.45)
+            thumb:SetAlpha(0.45)
             if label then
                 SetFontColor(label, THEME.muted)
             end
         else
-            box:SetAlpha(1)
+            track:SetAlpha(1)
+            thumb:SetAlpha(1)
             if label then
                 SetFontColor(label, THEME.text)
             end
@@ -496,27 +501,12 @@ local function SkinCheckbox(check, label)
     check:HookScript("OnEnable", UpdateCheckboxVisual)
     check:HookScript("OnDisable", UpdateCheckboxVisual)
 
-    check:HookScript("OnEnter", function(self)
-        hover:Show()
-
-        if not self:GetChecked() then
-            box:SetBackdropBorderColor(
-                THEME.accentHover[1],
-                THEME.accentHover[2],
-                THEME.accentHover[3],
-                0.95
-            )
-        end
-    end)
-
-    check:HookScript("OnLeave", function(self)
-        hover:Hide()
-        UpdateCheckboxVisual(self)
-    end)
+    check:HookScript("OnEnter", function() hover:Show() end)
+    check:HookScript("OnLeave", function(self) hover:Hide(); UpdateCheckboxVisual(self) end)
 
     check._khStyled = true
-    check._khBox = box
-    check._khFill = fill
+    check._khBox = track
+    check._khFill = thumb
     check._khUpdateVisual = UpdateCheckboxVisual
 
     -- Blizzard's SetChecked() does not fire OnClick. Most of this options UI
@@ -534,7 +524,40 @@ end
 
 local function SkinEditBox(box)
     if not box or box._khStyled then return end
-    ApplyBackdrop(box, { 0.05, 0.07, 0.10, 0.98 }, THEME.border)
+    local boxTextures = {}
+    for _, region in ipairs({ box:GetRegions() }) do
+        if region and region.GetObjectType
+            and region:GetObjectType() == "Texture" then
+            region:Hide()
+            table.insert(boxTextures, region)
+        end
+    end
+
+    if box.SetBackdrop then
+        ApplyBackdrop(
+            box,
+            { 0.07, 0.12, 0.18, 1 },
+            THEME.border,
+            THEME.flatControlBackdrop
+        )
+        -- SetBackdrop reuses BackdropTemplate regions, so show the freshly
+        -- skinned background and border after removing the Blizzard artwork.
+        for _, region in ipairs(boxTextures) do
+            region:Show()
+        end
+    else
+        local parent = box:GetParent()
+        if parent then
+            local back = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+            back:SetAllPoints(box)
+            back:EnableMouse(false)
+            back:SetFrameStrata(box:GetFrameStrata())
+            back:SetFrameLevel(math.max(parent:GetFrameLevel(), box:GetFrameLevel() - 1))
+            ApplyBackdrop(back, { 0.07, 0.12, 0.18, 1 }, THEME.border)
+            box:SetFrameLevel(back:GetFrameLevel() + 1)
+            box._khSkinBackdrop = back
+        end
+    end
     box:SetTextColor(THEME.text[1], THEME.text[2], THEME.text[3], 1)
     if box.DisplayText then SetFontColor(box.DisplayText, THEME.text) end
     box._khStyled = true
@@ -558,54 +581,90 @@ local function SkinSlider(slider)
         SkinEditBox(slider.ValueBox)
     end
 
+    -- OptionsSliderTemplate adds a NineSlice child frame. Its silver edge is
+    -- not returned by slider:GetRegions(), so hide it separately.
+    local nineSlice = slider.NineSlice
+    if nineSlice then
+        nineSlice:SetAlpha(0)
+        nineSlice:Hide()
+    end
+
     local regions = { slider:GetRegions() }
     for _, region in ipairs(regions) do
         if region and region.GetObjectType
             and region:GetObjectType() == "Texture" then
 
-            local name = region.GetTexture and region:GetTexture()
-            if type(name) == "string" then
-                region:SetTexture(nil)
-                region:SetAlpha(0)
-                region:Hide()
-            end
+            region:SetTexture(nil)
+            region:SetAlpha(0)
+            region:Hide()
         end
     end
 
-    local track = CreateFrame("Frame", nil, slider, "BackdropTemplate")
-    track:SetFrameLevel(slider:GetFrameLevel() - 1)
-    track:SetPoint("LEFT", slider, "LEFT", 8, -1)
-    track:SetPoint("RIGHT", slider, "RIGHT", -8, -1)
-    track:SetHeight(8)
-    ApplyBackdrop(track, { 0.045, 0.075, 0.13, 1 }, THEME.border)
+    -- Draw the custom rail directly on the slider. A lower-level child frame
+    -- can leave the OptionsSliderTemplate's beveled rail visible above it.
+    local trackLeft = slider:CreateTexture(nil, "BACKGROUND")
+    trackLeft:SetSize(4, 8)
+    trackLeft:SetPoint("LEFT", slider, "LEFT", 8, 0)
+    trackLeft:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+    trackLeft:SetTexCoord(0, 0.25, 0, 1)
+    trackLeft:SetVertexColor(0.18, 0.27, 0.38, 1)
 
-    local fill = track:CreateTexture(nil, "ARTWORK")
-    fill:SetPoint("TOPLEFT", track, "TOPLEFT", 1, -1)
-    fill:SetPoint("BOTTOMLEFT", track, "BOTTOMLEFT", 1, 1)
+    local trackRight = slider:CreateTexture(nil, "BACKGROUND")
+    trackRight:SetSize(4, 8)
+    trackRight:SetPoint("RIGHT", slider, "RIGHT", -8, 0)
+    trackRight:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+    trackRight:SetTexCoord(0.75, 1, 0, 1)
+    trackRight:SetVertexColor(0.18, 0.27, 0.38, 1)
+
+    local trackBg = slider:CreateTexture(nil, "BACKGROUND")
+    trackBg:SetPoint("LEFT", trackLeft, "RIGHT", 0, 0)
+    trackBg:SetPoint("RIGHT", trackRight, "LEFT", 0, 0)
+    trackBg:SetHeight(8)
+    trackBg:SetColorTexture(0.18, 0.27, 0.38, 1)
+
+    local fillLeft = slider:CreateTexture(nil, "BACKGROUND")
+    fillLeft:SetSize(4, 8)
+    fillLeft:SetPoint("LEFT", trackLeft, "LEFT", 0, 0)
+    fillLeft:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+    fillLeft:SetTexCoord(0, 0.25, 0, 1)
+    fillLeft:SetVertexColor(
+        THEME.accent[1],
+        THEME.accent[2],
+        THEME.accent[3],
+        1
+    )
+
+    local fill = slider:CreateTexture(nil, "BACKGROUND")
+    fill:SetPoint("LEFT", fillLeft, "RIGHT", 0, 0)
     fill:SetWidth(0)
+    fill:SetHeight(8)
     fill:SetColorTexture(
         THEME.accent[1],
         THEME.accent[2],
         THEME.accent[3],
-        0.85
+        1
     )
 
-    local fillGloss = track:CreateTexture(nil, "OVERLAY")
-    fillGloss:SetPoint("TOPLEFT", fill, "TOPLEFT", 0, 0)
-    fillGloss:SetPoint("TOPRIGHT", fill, "TOPRIGHT", 0, 0)
-    fillGloss:SetHeight(3)
-    fillGloss:SetColorTexture(1, 1, 1, 0.16)
+    local fillRight = slider:CreateTexture(nil, "BACKGROUND")
+    fillRight:SetSize(4, 8)
+    fillRight:SetPoint("LEFT", fill, "RIGHT", 0, 0)
+    fillRight:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+    fillRight:SetTexCoord(0.75, 1, 0, 1)
+    fillRight:SetVertexColor(
+        THEME.accent[1],
+        THEME.accent[2],
+        THEME.accent[3],
+        1
+    )
+    fillLeft:Hide()
+    fillRight:Hide()
 
     local thumb = slider:GetThumbTexture()
     if thumb then
-        thumb:SetTexture("Interface\\Buttons\\WHITE8X8")
-        thumb:SetSize(12, 18)
-        thumb:SetVertexColor(
-            THEME.accentHover[1],
-            THEME.accentHover[2],
-            THEME.accentHover[3],
-            1
-        )
+        thumb:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SliderThumb.tga")
+        thumb:SetSize(20, 20)
+        thumb:SetVertexColor(1, 1, 1, 1)
+        thumb:Show()
     end
 
     local function UpdateSliderVisual(self, value)
@@ -614,6 +673,8 @@ local function SkinSlider(slider)
 
         if not minValue or not maxValue or maxValue <= minValue then
             fill:SetWidth(0)
+            fillLeft:Hide()
+            fillRight:Hide()
             return
         end
 
@@ -624,13 +685,15 @@ local function SkinSlider(slider)
             ratio = 1
         end
 
-        local usableWidth = math.max(0, track:GetWidth() - 2)
+        local usableWidth = math.max(0, (self:GetWidth() or 0) - 16)
         local fillWidth = math.floor((usableWidth * ratio) + 0.5)
-        if fillWidth < 2 and ratio > 0 then
-            fillWidth = 2
+        if fillWidth < 8 and ratio > 0 then
+            fillWidth = 8
         end
 
-        fill:SetWidth(fillWidth)
+        fill:SetWidth(math.max(0, fillWidth - 8))
+        fillLeft:SetShown(fillWidth > 0)
+        fillRight:SetShown(fillWidth > 0)
     end
 
     slider:HookScript("OnValueChanged", UpdateSliderVisual)
@@ -643,18 +706,118 @@ local function SkinSlider(slider)
     end)
     slider:HookScript("OnSizeChanged", UpdateSliderVisual)
     slider:HookScript("OnEnable", function()
-        track:SetAlpha(1)
+        trackLeft:SetAlpha(1)
+        trackBg:SetAlpha(1)
+        trackRight:SetAlpha(1)
+        fillLeft:SetAlpha(1)
+        fill:SetAlpha(1)
+        fillRight:SetAlpha(1)
     end)
     slider:HookScript("OnDisable", function()
-        track:SetAlpha(0.45)
+        trackLeft:SetAlpha(0.45)
+        trackBg:SetAlpha(0.45)
+        trackRight:SetAlpha(0.45)
+        fillLeft:SetAlpha(0.45)
+        fill:SetAlpha(0.45)
+        fillRight:SetAlpha(0.45)
     end)
 
     slider._khStyled = true
-    slider._khTrack = track
+    slider._khTrack = trackBg
+    slider._khTrackBackground = trackBg
     slider._khFill = fill
     slider._khUpdateVisual = UpdateSliderVisual
 
     UpdateSliderVisual(slider)
+end
+
+-- Restyle only the visible scrollbar textures; keep the template's range,
+-- hit areas, and placement unchanged.
+moduleUI.SkinScrollFrame = function(scrollFrame)
+    if not scrollFrame or scrollFrame._khScrollStyled then return end
+    local bar = scrollFrame.ScrollBar
+    if not bar or not bar.GetThumbTexture then return end
+
+    local thumb = bar:GetThumbTexture()
+    local regions = { bar:GetRegions() }
+    for _, region in ipairs(regions) do
+        if region and region ~= thumb and region.GetObjectType
+            and region:GetObjectType() == "Texture" then
+            region:Hide()
+        end
+    end
+
+    local rail = bar:CreateTexture(nil, "BACKGROUND")
+    rail:SetPoint("TOP", bar, "TOP", 0, -14)
+    rail:SetPoint("BOTTOM", bar, "BOTTOM", 0, 14)
+    rail:SetWidth(6)
+    rail:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+    rail:SetVertexColor(0.12, 0.19, 0.28, 1)
+
+    if thumb then
+        thumb:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\SwitchTrack.tga")
+        thumb:SetVertexColor(0.30, 0.48, 0.68, 1)
+    end
+
+    local function HideButtonArtwork(frame)
+        if not frame then return end
+        for _, region in ipairs({ frame:GetRegions() }) do
+            if region and region.GetObjectType
+                and region:GetObjectType() == "Texture" then
+                region:SetTexture(nil)
+                region:SetAlpha(0)
+                region:Hide()
+            end
+        end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            HideButtonArtwork(child)
+        end
+    end
+
+    local function SkinArrow(button, texturePath)
+        if not button then return end
+        button:SetNormalTexture("")
+        button:SetPushedTexture("")
+        button:SetDisabledTexture("")
+        button:SetHighlightTexture("")
+        HideButtonArtwork(button)
+        local arrow = button:CreateTexture(nil, "OVERLAY")
+        arrow:SetSize(12, 12)
+        arrow:SetPoint("CENTER", button, "CENTER", 0, 0)
+        arrow:SetTexture(texturePath)
+        arrow:SetVertexColor(0.70, 0.82, 0.96, 1)
+        button._khScrollArrow = arrow
+    end
+
+    local upButton = bar.ScrollUpButton or scrollFrame.ScrollUpButton
+    local downButton = bar.ScrollDownButton or scrollFrame.ScrollDownButton
+    local candidates, seenButtons = {}, {}
+    local function FindArrowButtons(frame)
+        if not frame or not frame.GetChildren then return end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if child.GetObjectType then
+                local objectType = child:GetObjectType()
+                if (objectType == "Button" or objectType == "CheckButton")
+                    and not seenButtons[child] then
+                    seenButtons[child] = true
+                    table.insert(candidates, child)
+                end
+            end
+            FindArrowButtons(child)
+        end
+    end
+    FindArrowButtons(bar)
+    table.sort(candidates, function(a, b)
+        return (a:GetTop() or 0) > (b:GetTop() or 0)
+    end)
+    upButton = upButton or candidates[1]
+    downButton = downButton or candidates[#candidates]
+    if upButton == downButton then downButton = nil end
+    SkinArrow(upButton, "Interface\\AddOns\\KayliiHelper\\Media\\ScrollArrowUp.tga")
+    SkinArrow(downButton, "Interface\\AddOns\\KayliiHelper\\Media\\ScrollArrowDown.tga")
+
+    scrollFrame._khScrollStyled = true
+    scrollFrame._khScrollRail = rail
 end
 
 local function CreateFlatPanel(parent, x, y, width, height)
@@ -671,17 +834,6 @@ local function CreateFlatPanel(parent, x, y, width, height)
     frame:SetFrameLevel(parent:GetFrameLevel())
     ApplyBackdrop(frame, THEME.section, THEME.border)
 
-    local accent = frame:CreateTexture(nil, "BACKGROUND")
-    accent:SetColorTexture(
-        THEME.accent[1],
-        THEME.accent[2],
-        THEME.accent[3],
-        0.65
-    )
-    accent:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    accent:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-    accent:SetHeight(1)
-
     return frame
 end
 
@@ -689,12 +841,7 @@ local function CreateSection(parent, x, y, width, height, titleText, subtitleTex
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     frame:SetSize(width, height)
-    ApplyBackdrop(frame, THEME.section, THEME.border)
-    local line = frame:CreateTexture(nil, "BORDER")
-    line:SetColorTexture(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.85)
-    line:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    line:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
-    line:SetHeight(1)
+    ApplyBackdrop(frame, THEME.section, THEME.border, THEME.flatSectionBackdrop)
     local title = Label(frame, titleText or "", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -14)
     SetFontColor(title, THEME.text)
@@ -713,23 +860,31 @@ end
 local function StyleRows()
     for index, row in ipairs(rows) do
         if not row._khRowBg then
-            local bg = CreateFrame("Frame", nil, row, "BackdropTemplate")
-            bg:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-            bg:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -2, -1)
-            bg:SetFrameLevel(row:GetFrameLevel() - 1)
-            ApplyBackdrop(bg, index % 2 == 0 and { 0.08, 0.10, 0.14, 0.92 } or { 0.06, 0.08, 0.11, 0.92 }, THEME.border)
+            local bg = row:CreateTexture(nil, "BACKGROUND")
+            bg:SetAllPoints(row)
             row._khRowBg = bg
+
+            local separator = row:CreateTexture(nil, "BORDER")
+            separator:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 8, 0)
+            separator:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -8, 0)
+            separator:SetHeight(1)
+            row._khRowSeparator = separator
         end
+        local fill = index % 2 == 0 and THEME.panelAlt or THEME.section
+        row._khRowBg:SetColorTexture(fill[1], fill[2], fill[3], 0.58)
+        row._khRowSeparator:SetColorTexture(
+            THEME.border[1], THEME.border[2], THEME.border[3], 0.62
+        )
         if row.typeText then SetFontColor(row.typeText, THEME.accent) end
         if row.name then SetFontColor(row.name, THEME.text) end
         if row.idText then SetFontColor(row.idText, THEME.subtext) end
         if row.remove then SkinButton(row.remove) end
-        if row.show then SkinCheckbox(row.show) end
+        if row.show then SkinCheckbox(row.show, nil, false) end
     end
 end
 
 local function StyleWindowPanels()
-    if helperWindow then ApplyBackdrop(helperWindow, THEME.panel, THEME.borderAccent) end
+    if helperWindow then ApplyBackdrop(helperWindow, THEME.panel, THEME.border) end
     if helperContent then ApplyBackdrop(helperContent, THEME.panelAlt, THEME.border) end
 end
 
@@ -761,25 +916,50 @@ moduleUI.CreateChoiceDropdown = function(parent, x, y, width, choices, onSelect)
     button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
     SkinButton(button)
 
+    local caption = button:GetFontString()
+    if caption then
+        caption:ClearAllPoints()
+        caption:SetPoint("LEFT", button, "LEFT", 10, 0)
+        caption:SetPoint("RIGHT", button, "RIGHT", -25, 0)
+        caption:SetJustifyH("LEFT")
+    end
+    local arrow = button:CreateTexture(nil, "OVERLAY")
+    arrow:SetSize(10, 10)
+    arrow:SetPoint("RIGHT", button, "RIGHT", -10, 0)
+    arrow:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\ScrollArrowDown.tga")
+    arrow:SetVertexColor(THEME.subtext[1], THEME.subtext[2], THEME.subtext[3], 1)
+    button._khDropdownArrow = arrow
+
     local menuWidth = math.max(width or 220, 260)
     local visibleRows = math.min(#choices, 12)
-    local menuHeight = math.max(36, (visibleRows * 27) + 10)
+    local menuHeight = math.max(38, (visibleRows * 27) + 12)
 
     local menu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
     menu:SetFrameStrata("TOOLTIP")
     menu:SetFrameLevel(500)
     menu:SetClampedToScreen(true)
     menu:SetSize(menuWidth, menuHeight)
-    ApplyBackdrop(menu, THEME.panelAlt, THEME.borderAccent)
+    ApplyBackdrop(menu, THEME.panelAlt, THEME.border)
     menu:Hide()
 
-    local scroll = CreateFrame("ScrollFrame", nil, menu, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", menu, "TOPLEFT", 4, -4)
-    scroll:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -28, 4)
+    local content
+    local contentWidth
+    if #choices > 12 then
+        local scroll = CreateFrame("ScrollFrame", nil, menu, "UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT", menu, "TOPLEFT", 8, -6)
+        scroll:SetPoint("BOTTOMRIGHT", menu, "BOTTOMRIGHT", -18, 6)
+        moduleUI.SkinScrollFrame(scroll)
 
-    local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(menuWidth - 36, math.max(menuHeight - 8, (#choices * 27) + 4))
-    scroll:SetScrollChild(content)
+        content = CreateFrame("Frame", nil, scroll)
+        contentWidth = menuWidth - 34
+        content:SetSize(contentWidth, #choices * 27)
+        scroll:SetScrollChild(content)
+    else
+        content = CreateFrame("Frame", nil, menu)
+        content:SetPoint("TOPLEFT", menu, "TOPLEFT", 8, -6)
+        contentWidth = menuWidth - 16
+        content:SetSize(contentWidth, math.max(menuHeight - 12, #choices * 27))
+    end
 
     button._khChoiceButtons = {}
     button._khChoices = choices
@@ -787,10 +967,31 @@ moduleUI.CreateChoiceDropdown = function(parent, x, y, width, choices, onSelect)
     button._khMenu = menu
 
     for index, choice in ipairs(choices) do
-        local row = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
-        row:SetSize(menuWidth - 40, 24)
+        local row = CreateFrame("Button", nil, content)
+        row:SetSize(contentWidth, 26)
         row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -((index - 1) * 27))
-        row:SetText(choice.label or tostring(choice.key))
+        local hover = row:CreateTexture(nil, "BACKGROUND")
+        hover:SetAllPoints(row)
+        hover:SetColorTexture(0.12, 0.32, 0.58, 0.65)
+        hover:Hide()
+
+        local label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        label:SetPoint("LEFT", row, "LEFT", 12, 0)
+        label:SetPoint("RIGHT", row, "RIGHT", -10, 0)
+        label:SetJustifyH("LEFT")
+        label:SetText(choice.label or tostring(choice.key))
+        SetFontColor(label, THEME.text)
+
+        row._khHover = hover
+        row._khLabel = label
+        row:SetScript("OnEnter", function(self)
+            self._khHover:Show()
+            SetFontColor(self._khLabel, THEME.text)
+        end)
+        row:SetScript("OnLeave", function(self)
+            self._khHover:Hide()
+            SetFontColor(self._khLabel, THEME.subtext)
+        end)
         row:SetScript("OnClick", function()
             button:SetValue(choice.key)
             menu:Hide()
@@ -798,7 +999,6 @@ moduleUI.CreateChoiceDropdown = function(parent, x, y, width, choices, onSelect)
                 onSelect(choice.key)
             end
         end)
-        SkinButton(row)
         button._khChoiceButtons[index] = row
     end
 
@@ -813,12 +1013,14 @@ moduleUI.CreateChoiceDropdown = function(parent, x, y, width, choices, onSelect)
             end
         end
 
-        self:SetText(label .. "  v")
+        self:SetText(label)
     end
 
     function button:GetValue()
         return self._khValue
     end
+
+    button.SetDisplayValue = button.SetValue
 
     function button:SetEnabledState(enabled)
         self:SetEnabled(enabled and true or false)
@@ -846,6 +1048,51 @@ moduleUI.CreateChoiceDropdown = function(parent, x, y, width, choices, onSelect)
     end)
 
     return button
+end
+
+moduleUI.ApplyModuleHeader = function(parent, title, description, enableCheck, status, iconPath)
+    local iconBox = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    iconBox:SetSize(72, 72)
+    iconBox:SetPoint("TOPLEFT", parent, "TOPLEFT", 18, -12)
+    ApplyBackdrop(iconBox, THEME.panelAlt, THEME.border, THEME.flatSectionBackdrop)
+
+    local icon = iconBox:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(54, 54)
+    icon:SetPoint("CENTER", iconBox, "CENTER")
+    icon:SetTexture(iconPath)
+    icon:SetTexCoord(0, 1, 0, 1)
+    icon:SetVertexColor(0.90, 0.95, 1, 1)
+
+    title:ClearAllPoints()
+    title:SetPoint("TOPLEFT", iconBox, "TOPRIGHT", 16, -5)
+    title:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -164, -21)
+    title:SetJustifyH("LEFT")
+
+    description:ClearAllPoints()
+    description:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -5)
+    description:SetPoint("TOPRIGHT", title, "BOTTOMRIGHT", 0, -5)
+    description:SetJustifyH("LEFT")
+
+    if enableCheck then
+        enableCheck:ClearAllPoints()
+        enableCheck:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -28, -20)
+        if enableCheck.Label then enableCheck.Label:Hide() end
+    end
+
+    if status then
+        status:ClearAllPoints()
+        status:SetPoint(
+            "TOPRIGHT",
+            enableCheck or parent,
+            enableCheck and "BOTTOMRIGHT" or "TOPRIGHT",
+            0,
+            enableCheck and -5 or -36
+        )
+        status:SetWidth(132)
+        status:SetJustifyH("RIGHT")
+    end
+
+    return iconBox
 end
 
 moduleUI.ShowProfileTransferDialog = function(mode)
@@ -891,7 +1138,8 @@ moduleUI.ShowProfileTransferDialog = function(mode)
         )
         scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 20, -82)
         scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -40, 76)
-        ApplyBackdrop(scroll, { 0.035, 0.05, 0.075, 1 }, THEME.border)
+        moduleUI.SkinScrollFrame(scroll)
+        ApplyBackdrop(scroll, THEME.panelAlt, THEME.border)
 
         local editBox = CreateFrame("EditBox", nil, scroll)
         editBox:SetMultiLine(true)
@@ -993,10 +1241,11 @@ local function Checkbox(parent, text, x, y, callback)
         "UICheckButtonTemplate"
     )
 
+    check:SetSize(46, 22)
     check:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
 
     local label = Label(parent, text, "GameFontHighlight")
-    label:SetPoint("LEFT", check, "RIGHT", 5, 0)
+    label:SetPoint("LEFT", check, "RIGHT", 9, 0)
     SetFontColor(label, THEME.text)
 
     check:SetScript("OnClick", function(self)
@@ -1008,11 +1257,7 @@ local function Checkbox(parent, text, x, y, callback)
     return check
 end
 
-local VALUE_BOX_BACKDROP = {
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Buttons\\WHITE8X8",
-    edgeSize = 1,
-}
+local VALUE_BOX_BACKDROP = THEME.flatControlBackdrop
 
 local function CreateVisibleValueBox(parent, width)
     local box = CreateFrame(
@@ -1035,7 +1280,7 @@ local function CreateVisibleValueBox(parent, width)
     box:SetTextInsets(4, 4, 0, 0)
 
     box:SetBackdrop(VALUE_BOX_BACKDROP)
-    box:SetBackdropColor(0.05, 0.07, 0.10, 0.98)
+    box:SetBackdropColor(0.07, 0.12, 0.18, 1)
     box:SetBackdropBorderColor(THEME.border[1], THEME.border[2], THEME.border[3], 1)
 
     if parent.GetFrameStrata then
@@ -1244,6 +1489,7 @@ local function NumberBox(
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
 
     local box = CreateVisibleValueBox(parent, 56)
+    box.Label = label
 
     box:SetNumeric(true)
     box:SetMaxLetters(5)
@@ -1322,52 +1568,21 @@ local function FontCycleButton(
 )
     local label = Label(parent, labelText, "GameFontHighlight")
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-
-    local button = CreateFrame(
-        "Button",
-        nil,
+    local choices = {}
+    for _, key in ipairs(FONT_ORDER) do
+        choices[#choices + 1] = { key = key, label = FONT_LABELS[key] }
+    end
+    local button = moduleUI.CreateChoiceDropdown(
         parent,
-        "UIPanelButtonTemplate"
+        x,
+        y - 4,
+        150,
+        choices,
+        callback
     )
-    button:SetSize(150, 24)
+    button:ClearAllPoints()
     button:SetPoint("LEFT", label, "RIGHT", 8, 0)
-
-    button._fontKey = "FRIZ"
-
-    local function SetDisplay(key)
-        if not FONT_LABELS[key] then
-            key = "FRIZ"
-        end
-
-        button._fontKey = key
-        button:SetText(FONT_LABELS[key])
-    end
-
-    button.SetDisplayValue = function(self, key)
-        SetDisplay(key)
-    end
-
-    button:SetScript("OnClick", function(self)
-        local currentIndex = 1
-
-        for i, key in ipairs(FONT_ORDER) do
-            if key == self._fontKey then
-                currentIndex = i
-                break
-            end
-        end
-
-        local nextIndex = currentIndex + 1
-        if nextIndex > #FONT_ORDER then
-            nextIndex = 1
-        end
-
-        local key = FONT_ORDER[nextIndex]
-        SetDisplay(key)
-        callback(key)
-    end)
-
-    SkinButton(button)
+    button.SetDisplayValue = button.SetValue
     return button
 end
 
@@ -1453,48 +1668,25 @@ local function SortCycleButton(
 )
     local label = Label(parent, labelText, "GameFontHighlight")
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-
-    local button = CreateFrame(
-        "Button",
-        nil,
-        parent,
-        "UIPanelButtonTemplate"
-    )
-    button:SetSize(width, 24)
-    button:SetPoint("LEFT", label, "RIGHT", 8, 0)
-
-    button._value = order[1]
-
-    button.SetDisplayValue = function(self, value)
-        if not labels[value] then
-            value = order[1]
-        end
-
-        self._value = value
-        self:SetText(labels[value])
+    local choices = {}
+    for _, value in ipairs(order) do
+        choices[#choices + 1] = {
+            key = value,
+            label = labels[value] or tostring(value),
+        }
     end
-
-    button:SetScript("OnClick", function(self)
-        local current = 1
-
-        for index, value in ipairs(order) do
-            if value == self._value then
-                current = index
-                break
-            end
-        end
-
-        local nextIndex = current + 1
-        if nextIndex > #order then
-            nextIndex = 1
-        end
-
-        local value = order[nextIndex]
-        self:SetDisplayValue(value)
-        callback(value)
-    end)
-
-    SkinButton(button)
+    local button = moduleUI.CreateChoiceDropdown(
+        parent,
+        x,
+        y - 4,
+        width,
+        choices,
+        callback
+    )
+    button._khLabel = label
+    button:ClearAllPoints()
+    button:SetPoint("LEFT", label, "RIGHT", 8, 0)
+    button.SetDisplayValue = button.SetValue
     return button
 end
 
@@ -1519,47 +1711,24 @@ local function OutlineCycleButton(
 )
     local label = Label(parent, labelText, "GameFontHighlight")
     label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-
-    local button = CreateFrame(
-        "Button",
-        nil,
-        parent,
-        "UIPanelButtonTemplate"
-    )
-    button:SetSize(90, 24)
-    button:SetPoint("LEFT", label, "RIGHT", 8, 0)
-    button._value = "OUTLINE"
-
-    button.SetDisplayValue = function(self, value)
-        if not OUTLINE_LABELS[value] then
-            value = "OUTLINE"
-        end
-
-        self._value = value
-        self:SetText(OUTLINE_LABELS[value])
+    local choices = {}
+    for _, value in ipairs(OUTLINE_ORDER) do
+        choices[#choices + 1] = {
+            key = value,
+            label = OUTLINE_LABELS[value],
+        }
     end
-
-    button:SetScript("OnClick", function(self)
-        local current = 1
-
-        for i, value in ipairs(OUTLINE_ORDER) do
-            if value == self._value then
-                current = i
-                break
-            end
-        end
-
-        current = current + 1
-        if current > #OUTLINE_ORDER then
-            current = 1
-        end
-
-        local value = OUTLINE_ORDER[current]
-        self:SetDisplayValue(value)
-        callback(value)
-    end)
-
-    SkinButton(button)
+    local button = moduleUI.CreateChoiceDropdown(
+        parent,
+        x,
+        y - 4,
+        90,
+        choices,
+        callback
+    )
+    button:ClearAllPoints()
+    button:SetPoint("LEFT", label, "RIGHT", 8, 0)
+    button.SetDisplayValue = button.SetValue
     return button
 end
 
@@ -1570,8 +1739,11 @@ local function ColorButton(
     y,
     callback
 )
-    local label = Label(parent, labelText, "GameFontHighlight")
-    label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    local label
+    if labelText and labelText ~= "" then
+        label = Label(parent, labelText, "GameFontHighlight")
+        label:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    end
 
     local button = CreateFrame(
         "Button",
@@ -1579,14 +1751,25 @@ local function ColorButton(
         parent,
         "UIPanelButtonTemplate"
     )
-    button:SetSize(72, 24)
-    button:SetPoint("LEFT", label, "RIGHT", 8, 0)
-    button:SetText("Color")
+    if label then
+        button:SetSize(72, 24)
+        button:SetPoint("LEFT", label, "RIGHT", 8, 0)
+        button:SetText("Color")
+    else
+        button:SetSize(40, 24)
+        button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+        button:SetText("")
+    end
 
     local swatch = button:CreateTexture(nil, "OVERLAY")
     swatch._khKeep = true
-    swatch:SetSize(14, 14)
-    swatch:SetPoint("RIGHT", button, "RIGHT", -6, 0)
+    if label then
+        swatch:SetSize(14, 14)
+        swatch:SetPoint("RIGHT", button, "RIGHT", -6, 0)
+    else
+        swatch:SetPoint("TOPLEFT", button, "TOPLEFT", 4, -4)
+        swatch:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -4, 4)
+    end
     button.Swatch = swatch
 
     local function Normalize(color)
@@ -1858,8 +2041,8 @@ local function AcquireRow(index)
     row:SetSize(610, ROW_HEIGHT)
 
     local icon = row:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(30, 30)
-    icon:SetPoint("LEFT", row, "LEFT", 4, 0)
+    icon:SetSize(32, 32)
+    icon:SetPoint("LEFT", row, "LEFT", 10, 0)
     row.icon = icon
 
     local show = CreateFrame(
@@ -1869,24 +2052,24 @@ local function AcquireRow(index)
         "UICheckButtonTemplate"
     )
 
-    show:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+    show:SetSize(38, 20)
     row.show = show
 
     local typeText = Label(row, "", "GameFontDisableSmall")
-    typeText:SetPoint("LEFT", show, "RIGHT", 3, 9)
-    typeText:SetWidth(62)
+    typeText:SetPoint("TOPLEFT", icon, "TOPRIGHT", 12, -1)
+    typeText:SetWidth(52)
     typeText:SetJustifyH("LEFT")
     row.typeText = typeText
 
     local name = Label(row, "", "GameFontNormal")
     name:SetPoint("LEFT", typeText, "RIGHT", 2, 0)
-    name:SetWidth(300)
+    name:SetPoint("RIGHT", row, "RIGHT", -124, 3)
     name:SetJustifyH("LEFT")
     row.name = name
 
     local idText = Label(row, "", "GameFontDisableSmall")
-    idText:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -2)
-    idText:SetWidth(300)
+    idText:SetPoint("TOPLEFT", typeText, "BOTTOMLEFT", 0, -3)
+    idText:SetPoint("RIGHT", name, "RIGHT", 0, 0)
     idText:SetJustifyH("LEFT")
     row.idText = idText
 
@@ -1898,7 +2081,7 @@ local function AcquireRow(index)
     )
 
     remove:SetSize(72, 22)
-    remove:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+    remove:SetPoint("RIGHT", row, "RIGHT", -10, 0)
     remove:SetText("Remove")
     row.remove = remove
 
@@ -1973,6 +2156,8 @@ local function RebuildRows()
         end)
 
         if auraListMode == "saved" then
+            row.show:ClearAllPoints()
+            row.show:SetPoint("RIGHT", row, "RIGHT", -92, 0)
             row.remove:Show()
 
             row.remove:SetScript("OnClick", function()
@@ -1989,6 +2174,8 @@ local function RebuildRows()
                 end
             end)
         else
+            row.show:ClearAllPoints()
+            row.show:SetPoint("RIGHT", row, "RIGHT", -16, 0)
             row.remove:Hide()
         end
 
@@ -2159,26 +2346,27 @@ end
 
 local function UpdateAnchorModeButtons()
     local mode = BW.db.debuffAnchorMode
-
-    detachedButton:SetEnabled(mode ~= "detached")
-    aboveButton:SetEnabled(mode ~= "aboveBuffs")
-    belowButton:SetEnabled(mode ~= "belowBuffs")
+    if moduleUI.debuffAnchorModeDropdown then
+        moduleUI.debuffAnchorModeDropdown:SetValue(mode)
+    end
 end
 
 
 local function UpdateDirectionButtons()
-    -- Disabled button = currently selected direction.
-    buffGrowLeftButton:SetEnabled(not BW.db.buffGrowLeft)
-    buffGrowRightButton:SetEnabled(BW.db.buffGrowLeft)
-
-    buffGrowUpButton:SetEnabled(BW.db.buffGrowDown)
-    buffGrowDownButton:SetEnabled(not BW.db.buffGrowDown)
-
-    debuffGrowLeftButton:SetEnabled(not BW.db.debuffGrowLeft)
-    debuffGrowRightButton:SetEnabled(BW.db.debuffGrowLeft)
-
-    debuffGrowUpButton:SetEnabled(BW.db.debuffGrowDown)
-    debuffGrowDownButton:SetEnabled(not BW.db.debuffGrowDown)
+    if moduleUI.buffGrowHorizontalDropdown then
+        moduleUI.buffGrowHorizontalDropdown:SetValue(
+            BW.db.buffGrowLeft and "left" or "right"
+        )
+        moduleUI.buffGrowVerticalDropdown:SetValue(
+            BW.db.buffGrowDown and "down" or "up"
+        )
+        moduleUI.debuffGrowHorizontalDropdown:SetValue(
+            BW.db.debuffGrowLeft and "left" or "right"
+        )
+        moduleUI.debuffGrowVerticalDropdown:SetValue(
+            BW.db.debuffGrowDown and "down" or "up"
+        )
+    end
 end
 
 local function SetAnchorMode(mode)
@@ -2203,9 +2391,16 @@ UpdateAuraListWidth = function()
         row:SetWidth(width)
 
         if row.name then
-            local textWidth = math.max(220, width - 245)
+            local trailingSpace = auraListMode == "saved" and 140 or 68
+            local textWidth = math.max(120, width - 108 - trailingSpace)
             row.name:SetWidth(textWidth)
             row.idText:SetWidth(textWidth)
+            row.name:ClearAllPoints()
+            row.name:SetPoint("LEFT", row.typeText, "RIGHT", 2, 0)
+            row.name:SetPoint("RIGHT", row, "RIGHT", -trailingSpace, 3)
+            row.idText:ClearAllPoints()
+            row.idText:SetPoint("TOPLEFT", row.typeText, "BOTTOMLEFT", 0, -3)
+            row.idText:SetPoint("RIGHT", row.name, "RIGHT", 0, 0)
         end
     end
 end
@@ -2470,15 +2665,21 @@ local function BuildHelperWindow()
     helperWindow:SetMovable(true)
     helperWindow:SetResizable(true)
     helperWindow:EnableMouse(true)
-    ApplyBackdrop(helperWindow, THEME.panel, THEME.borderAccent)
+    local roundedWindowBackdrop = {
+        bgFile = THEME_BACKDROP.bgFile,
+        edgeFile = THEME_BACKDROP.edgeFile,
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    }
+    ApplyBackdrop(helperWindow, THEME.panel, THEME.border, roundedWindowBackdrop)
 
     local screenWidth = UIParent:GetWidth() or 1200
     local screenHeight = UIParent:GetHeight() or 900
     local maxWidth = math.max(900, screenWidth - 30)
     local maxHeight = math.max(700, screenHeight - 30)
     -- The configuration pages use an ~836px two-column content layout.
-    -- With the 216px sidebar offset and outer padding, 1020px allowed the
-    -- content cards to extend beyond the right edge at minimum size.
+    -- With the 244px sidebar offset and outer padding, 1100px keeps the
+    -- content cards inside the window at minimum size.
     -- Keep resizing enabled, but stop at a width that actually fits the UI.
     local minWidth = math.min(1100, maxWidth)
 
@@ -2490,6 +2691,7 @@ local function BuildHelperWindow()
     helperWindow:SetSize(width, height)
     helperWindow._khMinWidth = minWidth
     helperWindow._khMinHeight = minHeight
+    helperWindow._khExpandedMinHeight = minHeight
     helperWindow._khMaxWidth = maxWidth
     helperWindow._khMaxHeight = maxHeight
 
@@ -2507,7 +2709,10 @@ local function BuildHelperWindow()
     titleBar:SetPoint("TOPRIGHT", helperWindow, "TOPRIGHT", -1, -1)
     titleBar:SetHeight(82)
     titleBar:EnableMouse(true)
-    ApplyBackdrop(titleBar, { 0.05, 0.07, 0.09, 0.98 }, THEME.border)
+    -- Keep the title area as one flat surface inside the window. Giving this
+    -- frame its own border makes the Kaylii header look like a nested box.
+    titleBar:SetBackdrop({ bgFile = THEME_BACKDROP.bgFile })
+    titleBar:SetBackdropColor(THEME.panel[1], THEME.panel[2], THEME.panel[3], 1)
     titleBar:SetScript("OnMouseDown", function(_, button) if button == "LeftButton" then helperWindow:StartMoving() end end)
     titleBar:SetScript("OnMouseUp", function(_, button) if button == "LeftButton" then helperWindow:StopMovingOrSizing(); SaveHelperWindowPosition() end end)
 
@@ -2611,17 +2816,10 @@ local function BuildHelperWindow()
     )
     SetFontColor(subtitle, THEME.subtext)
 
-    local accent = titleBar:CreateTexture(nil, "BORDER")
-    accent:SetColorTexture(THEME.accent[1], THEME.accent[2], THEME.accent[3], 0.85)
-    accent:SetPoint("BOTTOMLEFT", titleBar, "BOTTOMLEFT", 18, 0)
-    accent:SetPoint("BOTTOMRIGHT", titleBar, "BOTTOMRIGHT", -18, 0)
-    accent:SetHeight(1)
-
     moduleUI.helperMinimizeButton = CreateFrame(
         "Button",
         nil,
-        titleBar,
-        "BackdropTemplate"
+        titleBar
     )
     moduleUI.helperMinimizeButton:SetSize(30, 30)
     moduleUI.helperMinimizeButton:SetPoint(
@@ -2631,12 +2829,6 @@ local function BuildHelperWindow()
         -50,
         -14
     )
-    ApplyBackdrop(
-        moduleUI.helperMinimizeButton,
-        { 0.045, 0.065, 0.095, 0.98 },
-        THEME.border
-    )
-
     moduleUI.helperMinimizeText = moduleUI.helperMinimizeButton:CreateFontString(
         nil,
         "OVERLAY",
@@ -2658,18 +2850,6 @@ local function BuildHelperWindow()
     )
 
     moduleUI.helperMinimizeButton:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(
-            THEME.buttonHover[1],
-            THEME.buttonHover[2],
-            THEME.buttonHover[3],
-            THEME.buttonHover[4] or 1
-        )
-        self:SetBackdropBorderColor(
-            THEME.accent[1],
-            THEME.accent[2],
-            THEME.accent[3],
-            1
-        )
         moduleUI.helperMinimizeText:SetTextColor(
             THEME.accentHover[1],
             THEME.accentHover[2],
@@ -2694,13 +2874,6 @@ local function BuildHelperWindow()
     end)
 
     moduleUI.helperMinimizeButton:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(0.045, 0.065, 0.095, 0.98)
-        self:SetBackdropBorderColor(
-            THEME.border[1],
-            THEME.border[2],
-            THEME.border[3],
-            THEME.border[4] or 1
-        )
         moduleUI.helperMinimizeText:SetTextColor(
             THEME.text[1],
             THEME.text[2],
@@ -2717,8 +2890,7 @@ local function BuildHelperWindow()
     local close = CreateFrame(
         "Button",
         nil,
-        titleBar,
-        "BackdropTemplate"
+        titleBar
     )
     close:SetSize(30, 30)
     close:SetPoint(
@@ -2728,12 +2900,6 @@ local function BuildHelperWindow()
         -14,
         -14
     )
-    ApplyBackdrop(
-        close,
-        { 0.045, 0.065, 0.095, 0.98 },
-        THEME.border
-    )
-
     local closeText = close:CreateFontString(
         nil,
         "OVERLAY",
@@ -2755,18 +2921,6 @@ local function BuildHelperWindow()
     )
 
     close:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(
-            THEME.buttonHover[1],
-            THEME.buttonHover[2],
-            THEME.buttonHover[3],
-            THEME.buttonHover[4] or 1
-        )
-        self:SetBackdropBorderColor(
-            THEME.accent[1],
-            THEME.accent[2],
-            THEME.accent[3],
-            1
-        )
         closeText:SetTextColor(
             THEME.accentHover[1],
             THEME.accentHover[2],
@@ -2776,18 +2930,6 @@ local function BuildHelperWindow()
     end)
 
     close:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(
-            0.045,
-            0.065,
-            0.095,
-            0.98
-        )
-        self:SetBackdropBorderColor(
-            THEME.border[1],
-            THEME.border[2],
-            THEME.border[3],
-            THEME.border[4] or 1
-        )
         closeText:SetTextColor(
             THEME.text[1],
             THEME.text[2],
@@ -2822,32 +2964,47 @@ local function BuildHelperWindow()
 
     helperSidebar = CreateFrame("Frame", nil, helperWindow, "BackdropTemplate")
     local sidebar = helperSidebar
-    sidebar:SetPoint("TOPLEFT", helperWindow, "TOPLEFT", 14, -96)
-    sidebar:SetPoint("BOTTOMLEFT", helperWindow, "BOTTOMLEFT", 14, 14)
-    sidebar:SetWidth(188)
-    ApplyBackdrop(sidebar, { 0.07, 0.09, 0.12, 0.98 }, THEME.border)
+    local sidebarWidth = 228
+    sidebar:SetPoint("TOPLEFT", helperWindow, "TOPLEFT", 10, -83)
+    sidebar:SetPoint("BOTTOMLEFT", helperWindow, "BOTTOMLEFT", 10, 10)
+    sidebar:SetWidth(sidebarWidth)
+    local sidebarTopLine = sidebar:CreateTexture(nil, "BORDER")
+    sidebarTopLine:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 0, 0)
+    sidebarTopLine:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", 0, 0)
+    sidebarTopLine:SetHeight(1)
+    sidebarTopLine:SetColorTexture(THEME.border[1], THEME.border[2], THEME.border[3], 1)
 
-    local modulesLabel = Label(sidebar, "MODULES", "GameFontDisableSmall")
-    modulesLabel:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 16, -16)
-    SetFontColor(modulesLabel, THEME.muted)
-
-    local function NavButton(text, y, view)
+    local function NavButton(text, y, view, iconPath)
         local button = CreateFrame("Button", nil, sidebar, "UIPanelButtonTemplate")
-        button:SetSize(156, 34)
-        button:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 16, y)
+        button:SetSize(sidebarWidth - 20, 34)
+        button:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 10, y)
         button:SetText(text)
+        local buttonText = button:GetFontString()
+        if buttonText then
+            buttonText:ClearAllPoints()
+            buttonText:SetPoint("LEFT", button, "LEFT", 40, 0)
+            buttonText:SetPoint("RIGHT", button, "RIGHT", -8, 0)
+            buttonText:SetJustifyH("LEFT")
+        end
         button:SetScript("OnClick", function() SetHelperView(view) end)
+        button._khNavStyle = true
         SkinButton(button)
+        local icon = button:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(19, 19)
+        icon:SetPoint("LEFT", button, "LEFT", 12, 0)
+        icon:SetTexture(iconPath)
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        icon:SetVertexColor(0.88, 0.94, 1.00, 1)
         return button
     end
 
-    helperHomeButton = NavButton("Kaylii Helper", -44, "home")
-    helperBuffButton = NavButton("Buff White List", -84, "buff")
-    helperLustButton = NavButton("Lust Up", -124, "lust")
-    moduleUI.helperStatsButton = NavButton("My Stats", -164, "stats")
-    moduleUI.helperTalentButton = NavButton("Talent Loadout", -204, "talent")
-    moduleUI.helperRaidSpecButton = NavButton("Raid Frame Spec", -244, "raidspec")
-    moduleUI.helperSurvivalButton = NavButton("Survival Helper", -284, "survival")
+    helperHomeButton = NavButton("Home", -16, "home", "Interface\\AddOns\\KayliiHelper\\Media\\NavHome.tga")
+    helperBuffButton = NavButton("Buff White List", -56, "buff", "Interface\\AddOns\\KayliiHelper\\Media\\NavBuff.tga")
+    helperLustButton = NavButton("Lust Up", -96, "lust", "Interface\\AddOns\\KayliiHelper\\Media\\NavLust.tga")
+    moduleUI.helperStatsButton = NavButton("My Stats", -136, "stats", "Interface\\AddOns\\KayliiHelper\\Media\\NavStats.tga")
+    moduleUI.helperTalentButton = NavButton("Talent Loadout", -176, "talent", "Interface\\AddOns\\KayliiHelper\\Media\\NavTalent.tga")
+    moduleUI.helperRaidSpecButton = NavButton("Raid Frame Spec", -216, "raidspec", "Interface\\AddOns\\KayliiHelper\\Media\\NavRaid.tga")
+    moduleUI.helperSurvivalButton = NavButton("Survival Helper", -256, "survival", "Interface\\AddOns\\KayliiHelper\\Media\\NavSurvival.tga")
 
     local openHelp = Label(
         sidebar,
@@ -2860,19 +3017,19 @@ local function BuildHelperWindow()
         "GameFontHighlightSmall"
     )
     openHelp:SetPoint("BOTTOMLEFT", sidebar, "BOTTOMLEFT", 16, 36)
-    openHelp:SetWidth(150)
+    openHelp:SetWidth(sidebarWidth - 32)
     openHelp:SetJustifyH("LEFT")
     SetFontColor(openHelp, THEME.subtext)
 
     local resizeHint = Label(sidebar, "Drag the lower-right corner to resize.", "GameFontDisableSmall")
     resizeHint:SetPoint("BOTTOMLEFT", sidebar, "BOTTOMLEFT", 16, 16)
-    resizeHint:SetWidth(150)
+    resizeHint:SetWidth(sidebarWidth - 32)
     resizeHint:SetJustifyH("LEFT")
     SetFontColor(resizeHint, THEME.muted)
 
     helperContent = CreateFrame("Frame", nil, helperWindow, "BackdropTemplate")
-    helperContent:SetPoint("TOPLEFT", helperWindow, "TOPLEFT", 216, -96)
-    helperContent:SetPoint("BOTTOMRIGHT", helperWindow, "BOTTOMRIGHT", -16, 16)
+    helperContent:SetPoint("TOPLEFT", helperWindow, "TOPLEFT", 10 + sidebarWidth + 6, -83)
+    helperContent:SetPoint("BOTTOMRIGHT", helperWindow, "BOTTOMRIGHT", -10, 10)
     ApplyBackdrop(helperContent, THEME.panelAlt, THEME.border)
 
     moduleUI.helperResizeGrip = CreateFrame("Button", nil, helperWindow)
@@ -2947,6 +3104,15 @@ local function BuildHelperWindow()
 end
 
 SetMainView = function(view)
+    -- The main tab handler can be reached while options are still being
+    -- assembled after a UI error. Keep that partial state from throwing more
+    -- nil-page errors; FinalizeOptions selects the initial page once built.
+    if not layoutPage or not auraPage or not textPage
+        or not layoutTab or not auraTab or not textTab then
+        mainView = view
+        return
+    end
+
     mainView = view
 
     layoutPage:Hide()
@@ -3124,6 +3290,9 @@ function BW:RefreshLustUpOptions()
         moduleUI.lustCustomDrumListText:SetText(
             self:GetCustomLustDrumListText()
         )
+        if moduleUI.RefreshLustCustomDrumListLayout then
+            moduleUI.RefreshLustCustomDrumListLayout()
+        end
     end
 
     lustUpUnlockCheck:SetChecked(
@@ -3144,16 +3313,8 @@ function BW:RefreshLustUpOptions()
         tonumber(self.db.lustUpSize) or 48
     )
 
-    if lustUpStatusText and self.GetLustUpStatusText then
-        lustUpStatusText:SetText(
-            self:GetLustUpStatusText()
-        )
-    end
-
-    if lustUpCustomListText and self.GetLustUpCustomListText then
-        lustUpCustomListText:SetText(
-            self:GetLustUpCustomListText()
-        )
+    if moduleUI.RefreshLustCustomLockoutList then
+        moduleUI.RefreshLustCustomLockoutList()
     end
 end
 
@@ -3178,8 +3339,8 @@ function BW:RefreshStatsOptions()
     if moduleUI.statsPanel and moduleUI.statsPanel.moduleStatus then
         moduleUI.statsPanel.moduleStatus:SetText(
             self.db.statsModuleEnabled
-            and "|cff4d9fffModule enabled|r"
-            or "|cffff5555Module disabled|r"
+            and "|cff4d9fffEnabled|r"
+            or "|cffff5555Disabled|r"
         )
     end
 
@@ -3242,9 +3403,12 @@ function BW:RefreshStatsOptions()
         self.db.statsOrientation or "horizontal"
     )
 
-    moduleUI.statsAlignButton:SetDisplayValue(
-        self.db.statsTextAlign or "center"
-    )
+    local statsVertical = self.db.statsOrientation == "vertical"
+    moduleUI.statsAlignButton:SetShown(not statsVertical)
+    moduleUI.statsVerticalAlignButton:SetShown(statsVertical)
+    moduleUI.statsAlignLabel:SetText(statsVertical and "Vertical alignment" or "Text alignment")
+    moduleUI.statsAlignButton:SetDisplayValue(self.db.statsTextAlign or "center")
+    moduleUI.statsVerticalAlignButton:SetDisplayValue(self.db.statsVerticalAlign or "middle")
 
     if moduleUI.statsPreviewText
         and self.SetStatsFontStringText then
@@ -3259,8 +3423,9 @@ function BW:RefreshStatsOptions()
             align = "center"
         end
 
-        moduleUI.statsPreviewText:SetJustifyH(
-            string.upper(align)
+        moduleUI.statsPreviewText:SetJustifyH(string.upper(align))
+        moduleUI.statsPreviewText:SetJustifyV(
+            statsVertical and string.upper(self.db.statsVerticalAlign or "middle") or "MIDDLE"
         )
 
         self:SetStatsFontStringText(
@@ -3310,7 +3475,6 @@ function BW:RefreshSurvivalOptions()
             tonumber(self.db.survivalTriggerThreshold) or 30
         )
     end
-
     if moduleUI.survivalAlertTypeCheck then
         moduleUI.survivalAlertTypeCheck:SetChecked(
             self.db.survivalThresholdAlertType == "sound"
@@ -3970,9 +4134,7 @@ function BW:RefreshTextTooltipOptionStates()
 end
 
 function BW:RefreshLayoutOptionStates()
-    previewCheck:SetChecked(
-        self.db.showLayoutPreview and true or false
-    )
+    previewCheck:SetChecked(self.db.showLayoutPreview and true or false)
 
     iconSizeSlider:SetDisplayValue(
         tonumber(self.db.iconSize) or 18
@@ -4027,7 +4189,11 @@ function BW:RefreshMinimapButtonOptions()
 end
 
 function BW:RefreshOptions()
-    if not panel or not self.db then
+    -- All refresh routines expect their controls to exist. During construction
+    -- the panel shell is created before its three pages, so defer refreshes
+    -- until those pages have finished building.
+    if not panel or not self.db
+        or not layoutPage or not auraPage or not textPage then
         return
     end
 
@@ -4045,43 +4211,56 @@ local function BuildRootPanel()
     rootPanel = CreateFrame("Frame", nil, helperContent)
     rootPanel:SetAllPoints(helperContent)
 
-    CreateFlatPanel(rootPanel, 16, -16, 820, 112)
-    CreateFlatPanel(rootPanel, 16, -146, 400, 174)
-    CreateFlatPanel(rootPanel, 432, -146, 404, 174)
-    CreateFlatPanel(rootPanel, 16, -338, 400, 174)
-    CreateFlatPanel(rootPanel, 432, -338, 404, 174)
-    CreateFlatPanel(rootPanel, 16, -530, 400, 112)
-    CreateFlatPanel(rootPanel, 432, -530, 404, 112)
+    local standaloneModuleSettings = {
+        buff = { global = "KayliiTargetAurasModule", db = "KayliiTargetAurasDB", key = "buffWhitelistModuleEnabled", setter = "SetBuffWhitelistModuleEnabled" },
+        lust = { global = "KayliiLustUpModule", db = "KayliiLustDB", key = "lustUpEnabled", apply = "ApplyLustUpSettings" },
+        stats = { global = "KayliiStatsDisplayModule", db = "KayliiStatsDB", key = "statsModuleEnabled", setter = "SetStatsModuleEnabled" },
+        talent = { global = "KayliiTalentLoadoutModule", db = "KayliiTalentDB", key = "talentLoadoutEnabled", setter = "SetTalentLoadoutEnabled" },
+        raidspec = { global = "KayliiRaidFrameSpecModule", db = "KayliiRaidSpecDB", key = "raidFrameSpecEnabled", setter = "SetRaidFrameSpecEnabled" },
+        survival = { global = "KayliiSurvivalHelperModule", db = "KayliiSurvivalDB", key = "survivalModuleEnabled", setter = "SetSurvivalModuleEnabled" },
+    }
 
-    local title = Label(
-        rootPanel,
-        "Kaylii Helper",
-        "GameFontNormalHuge"
-    )
-    title:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -28
-    )
+    local function SetStandaloneModuleEnabled(view, value, forceApply)
+        local info = standaloneModuleSettings[view]
+        if not info then return end
+
+        value = value and true or false
+        local standalone = _G[info.global]
+        local db = standalone and standalone.db or _G[info.db]
+        if type(db) ~= "table" then return end
+        if db[info.key] == value and not forceApply then return end
+
+        if standalone and info.setter and type(standalone[info.setter]) == "function" then
+            standalone[info.setter](standalone, value)
+        else
+            db[info.key] = value
+            if standalone and info.apply and type(standalone[info.apply]) == "function" then
+                standalone[info.apply](standalone)
+            end
+        end
+    end
+    moduleUI.SetStandaloneModuleEnabled = SetStandaloneModuleEnabled
+
+    -- The dashboard cards use a one-pixel edge instead of the shared
+    -- tooltip-style frame, which gives them a flatter, quieter surface.
+    local dashboardCardBackdrop = {
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    }
+
+    local title = Label(rootPanel, "Your modules", "GameFontNormalHuge")
+    title:SetPoint("TOPLEFT", rootPanel, "TOPLEFT", 20, -18)
     SetFontColor(title, THEME.text)
 
-    local desc = Label(
+    moduleUI.rootModuleCountText = Label(
         rootPanel,
-        "Enable or disable each helper module independently. Module settings stay saved while a module is disabled.",
+        "",
         "GameFontHighlight"
     )
-    desc:SetPoint(
-        "TOPLEFT",
-        title,
-        "BOTTOMLEFT",
-        0,
-        -10
-    )
-    desc:SetWidth(500)
-    desc:SetJustifyH("LEFT")
-    SetFontColor(desc, THEME.subtext)
+    moduleUI.rootModuleCountText:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
+    SetFontColor(moduleUI.rootModuleCountText, THEME.subtext)
 
     local exportProfile = CreateFrame(
         "Button",
@@ -4090,7 +4269,6 @@ local function BuildRootPanel()
         "UIPanelButtonTemplate"
     )
     exportProfile:SetSize(112, 28)
-    exportProfile:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -154, -72)
     exportProfile:SetText("Export profile")
     exportProfile:SetScript("OnClick", function()
         moduleUI.ShowProfileTransferDialog("export")
@@ -4104,324 +4282,231 @@ local function BuildRootPanel()
         "UIPanelButtonTemplate"
     )
     importProfile:SetSize(112, 28)
-    importProfile:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -34, -72)
+    importProfile:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -18, -18)
+    exportProfile:SetPoint("RIGHT", importProfile, "LEFT", -8, 0)
     importProfile:SetText("Import profile")
     importProfile:SetScript("OnClick", function()
         moduleUI.ShowProfileTransferDialog("import")
     end)
     SkinButton(importProfile)
 
-    local buffTitle = Label(
-        rootPanel,
-        "Buff White List",
-        "GameFontNormalLarge"
-    )
-    buffTitle:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -168
-    )
-    SetFontColor(buffTitle, THEME.text)
+    local moduleSettingsButtons = {}
+    local moduleStateLabels = {}
+    moduleUI.rootModuleSettingsButtons = moduleSettingsButtons
 
-    rootBuffEnabledCheck = Checkbox(
-        rootPanel,
-        "Enable Buff White List module",
-        34,
-        -198,
+    local function NewCard()
+        local card = CreateFrame("Frame", nil, rootPanel, "BackdropTemplate")
+        ApplyBackdrop(card, THEME.section, THEME.border, dashboardCardBackdrop)
+        return card
+    end
+
+    local function ModuleCard(titleText, description, iconPath, column, row, view, toggleCallback)
+        local card = NewCard()
+        local y = 88 + ((row - 1) * 136)
+        if column == 1 then
+            card:SetPoint("TOPLEFT", rootPanel, "TOPLEFT", 16, -y)
+            card:SetPoint("TOPRIGHT", rootPanel, "TOP", -8, -y)
+        else
+            card:SetPoint("TOPLEFT", rootPanel, "TOP", 8, -y)
+            card:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -16, -y)
+        end
+        card:SetHeight(124)
+
+        local iconBox = CreateFrame("Frame", nil, card, "BackdropTemplate")
+        iconBox:SetSize(76, 76)
+        iconBox:SetPoint("TOPLEFT", card, "TOPLEFT", 14, -16)
+        ApplyBackdrop(iconBox, THEME.panelAlt, THEME.border, dashboardCardBackdrop)
+
+        local icon = iconBox:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(58, 58)
+        icon:SetPoint("CENTER", iconBox, "CENTER")
+        icon:SetTexture(iconPath)
+        icon:SetTexCoord(0, 1, 0, 1)
+        icon:SetVertexColor(0.88, 0.94, 1, 1)
+
+        local controlColumn = CreateFrame("Frame", nil, card)
+        controlColumn:SetSize(112, 112)
+        controlColumn:SetPoint("TOPRIGHT", card, "TOPRIGHT", -14, -17)
+
+        local moduleTitle = Label(card, titleText, "GameFontHighlightLarge")
+        moduleTitle:SetPoint("TOPLEFT", iconBox, "TOPRIGHT", 16, -5)
+        moduleTitle:SetPoint("TOPRIGHT", controlColumn, "TOPLEFT", -12, -5)
+        moduleTitle:SetJustifyH("LEFT")
+        SetFontColor(moduleTitle, THEME.text)
+
+        local installed = Label(card, "Installed", "GameFontHighlight")
+        installed:SetPoint("TOPLEFT", moduleTitle, "BOTTOMLEFT", 0, -2)
+        installed:SetPoint("TOPRIGHT", moduleTitle, "BOTTOMRIGHT", 0, -2)
+        installed:SetJustifyH("LEFT")
+        SetFontColor(installed, THEME.subtext)
+
+        local details = Label(card, description, "GameFontHighlight")
+        details:SetPoint("TOPLEFT", installed, "BOTTOMLEFT", 0, -6)
+        details:SetPoint("TOPRIGHT", installed, "BOTTOMRIGHT", 0, -6)
+        details:SetJustifyH("LEFT")
+        SetFontColor(details, THEME.subtext)
+
+        local toggle = CreateFrame("CheckButton", nil, card, "UICheckButtonTemplate")
+        toggle:SetPoint("TOPRIGHT", controlColumn, "TOPRIGHT", 0, 0)
+        toggle:SetScript("OnClick", function(self)
+            toggleCallback(self:GetChecked() and true or false)
+            if moduleUI.UpdateRootModuleDashboard then
+                moduleUI.UpdateRootModuleDashboard()
+            end
+        end)
+        SkinCheckbox(toggle)
+
+        local state = Label(card, "Enabled", "GameFontHighlight")
+        state:SetPoint("TOPRIGHT", toggle, "BOTTOMRIGHT", 0, -4)
+        state:SetWidth(112)
+        state:SetJustifyH("RIGHT")
+        SetFontColor(state, THEME.subtext)
+
+        local settings = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+        settings:SetSize(112, 28)
+        settings:SetPoint("TOP", controlColumn, "TOP", 0, -65)
+        settings:SetText("Settings")
+        settings:SetScript("OnClick", function()
+            SetHelperView(view)
+        end)
+        SkinButton(settings)
+
+        moduleSettingsButtons[view] = settings
+        moduleStateLabels[view] = state
+        return toggle, details
+    end
+
+    rootBuffEnabledCheck = ModuleCard(
+        "Buff White List",
+        "Choose which target and focus auras appear.",
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavBuff.tga",
+        1, 1, "buff",
         function(value)
             if BW.SetBuffWhitelistModuleEnabled then
                 BW:SetBuffWhitelistModuleEnabled(value)
             else
                 BW.db.buffWhitelistModuleEnabled = value
             end
-
+            SetStandaloneModuleEnabled("buff", value, true)
             BW:RefreshOptions()
         end
     )
 
-    local buffDesc = Label(
-        rootPanel,
-        "Custom Blizzard target/focus aura grids, whitelist/blacklist filters, sorting and text controls.",
-        "GameFontHighlightSmall"
-    )
-    buffDesc:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -234
-    )
-    buffDesc:SetWidth(360)
-    buffDesc:SetJustifyH("LEFT")
-    SetFontColor(buffDesc, THEME.subtext)
-
-    local lustTitle = Label(
-        rootPanel,
+    rootLustEnabledCheck = ModuleCard(
         "Lust Up",
-        "GameFontNormalLarge"
-    )
-    lustTitle:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        450,
-        -168
-    )
-    SetFontColor(lustTitle, THEME.text)
-
-    rootLustEnabledCheck = Checkbox(
-        rootPanel,
-        "Enable Lust Up module",
-        450,
-        -198,
+        "Track lust readiness and configure alerts.",
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavLust.tga",
+        2, 1, "lust",
         function(value)
             BW.db.lustUpEnabled = value
-
-            if BW.ApplyLustUpSettings then
-                BW:ApplyLustUpSettings()
-            end
-
+            if BW.ApplyLustUpSettings then BW:ApplyLustUpSettings() end
+            SetStandaloneModuleEnabled("lust", value, true)
             BW:RefreshLustUpOptions()
             BW:RefreshOptions()
         end
     )
 
-    local lustDesc = Label(
-        rootPanel,
-        "Tracks lust readiness, shows a movable indicator, and provides customizable voice alerts.",
-        "GameFontHighlightSmall"
-    )
-    lustDesc:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        450,
-        -234
-    )
-    lustDesc:SetWidth(360)
-    lustDesc:SetJustifyH("LEFT")
-    SetFontColor(lustDesc, THEME.subtext)
-
-    local statsTitle = Label(
-        rootPanel,
+    moduleUI.rootStatsEnabledCheck = ModuleCard(
         "My Stats",
-        "GameFontNormalLarge"
-    )
-    statsTitle:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -360
-    )
-    SetFontColor(statsTitle, THEME.text)
-
-    moduleUI.rootStatsEnabledCheck = Checkbox(
-        rootPanel,
-        "Enable My Stats module",
-        34,
-        -390,
+        "Display Crit, Haste, Mastery and Versatility.",
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavStats.tga",
+        1, 2, "stats",
         function(value)
-            if BW.SetStatsModuleEnabled then
-                BW:SetStatsModuleEnabled(value)
-            end
-
+            if BW.SetStatsModuleEnabled then BW:SetStatsModuleEnabled(value) end
+            SetStandaloneModuleEnabled("stats", value, true)
             BW:RefreshStatsOptions()
         end
     )
 
-    local statsDesc = Label(
-        rootPanel,
-        "Movable live display for Crit, Haste, Mastery and Versatility.",
-        "GameFontHighlightSmall"
-    )
-    statsDesc:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -426
-    )
-    statsDesc:SetWidth(360)
-    statsDesc:SetJustifyH("LEFT")
-    SetFontColor(statsDesc, THEME.subtext)
-
-    local talentTitle = Label(
-        rootPanel,
+    moduleUI.rootTalentEnabledCheck = ModuleCard(
         "Talent Loadout",
-        "GameFontNormalLarge"
-    )
-    talentTitle:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        450,
-        -360
-    )
-    SetFontColor(talentTitle, THEME.text)
-
-    moduleUI.rootTalentEnabledCheck = Checkbox(
-        rootPanel,
-        "Enable Talent Loadout module",
-        450,
-        -390,
+        "Display your spec, loadout and Hero Talent tree.",
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavTalent.tga",
+        2, 2, "talent",
         function(value)
-            if BW.SetTalentLoadoutEnabled then
-                BW:SetTalentLoadoutEnabled(value)
-            end
-
+            if BW.SetTalentLoadoutEnabled then BW:SetTalentLoadoutEnabled(value) end
+            SetStandaloneModuleEnabled("talent", value, true)
             BW:RefreshTalentLoadoutOptions()
         end
     )
 
-    local talentDesc = Label(
-        rootPanel,
-        "Shows your current specialization, saved talent loadout name, and active Hero Talent tree.",
-        "GameFontHighlightSmall"
-    )
-    talentDesc:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        450,
-        -426
-    )
-    talentDesc:SetWidth(360)
-    talentDesc:SetJustifyH("LEFT")
-    SetFontColor(talentDesc, THEME.subtext)
-
-    local raidSpecTitle = Label(
-        rootPanel,
+    moduleUI.rootRaidSpecEnabledCheck, moduleUI.rootRaidSpecDescription = ModuleCard(
         "Raid Frame Spec",
-        "GameFontNormalLarge"
-    )
-    raidSpecTitle:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -550
-    )
-    SetFontColor(raidSpecTitle, THEME.text)
-
-    moduleUI.rootRaidSpecEnabledCheck = Checkbox(
-        rootPanel,
-        "Enable Raid Frame Spec module",
-        34,
-        -580,
+        "Save raid and party frame positions per spec.",
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavRaid.tga",
+        1, 3, "raidspec",
         function(value)
-            if BW.SetRaidFrameSpecEnabled then
-                BW:SetRaidFrameSpecEnabled(value)
-            end
-
+            if BW.SetRaidFrameSpecEnabled then BW:SetRaidFrameSpecEnabled(value) end
+            SetStandaloneModuleEnabled("raidspec", value, true)
             BW:RefreshRaidFrameSpecOptions()
         end
     )
 
-    local raidSpecDesc = Label(
-        rootPanel,
-        "Automatically applies saved Ellesmere Raid and Party / 5-man positions for each specialization.",
-        "GameFontHighlightSmall"
-    )
-    raidSpecDesc:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        34,
-        -616
-    )
-    raidSpecDesc:SetWidth(360)
-    raidSpecDesc:SetJustifyH("LEFT")
-    SetFontColor(raidSpecDesc, THEME.subtext)
-
-    moduleUI.rootRaidSpecStatus = Label(
-        rootPanel,
-        "",
-        "GameFontDisableSmall"
-    )
+    moduleUI.rootRaidSpecStatus = Label(rootPanel, "", "GameFontDisableSmall")
     moduleUI.rootRaidSpecStatus:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        244,
-        -554
+        "BOTTOMLEFT",
+        moduleUI.rootRaidSpecDescription,
+        "BOTTOMLEFT",
+        0,
+        -2
     )
-    moduleUI.rootRaidSpecStatus:SetWidth(150)
-    moduleUI.rootRaidSpecStatus:SetJustifyH("RIGHT")
+    moduleUI.rootRaidSpecStatus:SetWidth(220)
+    moduleUI.rootRaidSpecStatus:SetJustifyH("LEFT")
 
-    local survivalTitle = Label(
-        rootPanel,
+    moduleUI.rootSurvivalEnabledCheck = ModuleCard(
         "Survival Helper",
-        "GameFontNormalLarge"
-    )
-    survivalTitle:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        450,
-        -550
-    )
-    SetFontColor(survivalTitle, THEME.text)
-
-    moduleUI.rootSurvivalEnabledCheck = Checkbox(
-        rootPanel,
-        "Enable Survival Helper module",
-        450,
-        -580,
+        "Suggest defensives, Healthstones and potions.",
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavSurvival.tga",
+        2, 3, "survival",
         function(value)
             if BW.SetSurvivalModuleEnabled then
                 BW:SetSurvivalModuleEnabled(value)
             end
-
+            SetStandaloneModuleEnabled("survival", value, true)
             BW:RefreshSurvivalOptions()
         end
     )
 
-    local survivalDesc = Label(
-        rootPanel,
-        "Suggests a personal defensive, Healthstone, or healing potion at configurable HP thresholds.",
-        "GameFontHighlightSmall"
-    )
-    survivalDesc:SetPoint(
-        "TOPLEFT",
-        rootPanel,
-        "TOPLEFT",
-        450,
-        -616
-    )
-    survivalDesc:SetWidth(360)
-    survivalDesc:SetJustifyH("LEFT")
-    SetFontColor(survivalDesc, THEME.subtext)
+    moduleUI.UpdateRootModuleDashboard = function()
+        if not BW.db or not moduleUI.rootModuleCountText then return end
+        local states = {
+            buff = BW.db.buffWhitelistModuleEnabled ~= false,
+            lust = BW.db.lustUpEnabled and true or false,
+            stats = BW.db.statsModuleEnabled and true or false,
+            talent = BW.db.talentLoadoutEnabled and true or false,
+            raidspec = BW.db.raidFrameSpecEnabled and true or false,
+            survival = BW.db.survivalModuleEnabled and true or false,
+        }
+        local enabledCount = 0
+        for view, enabled in pairs(states) do
+            if enabled then enabledCount = enabledCount + 1 end
+            if moduleStateLabels[view] then
+                moduleStateLabels[view]:SetText(enabled and "Enabled" or "Disabled")
+                SetFontColor(moduleStateLabels[view], enabled and THEME.subtext or THEME.muted)
+            end
+            if moduleSettingsButtons[view] then
+                moduleSettingsButtons[view]:SetEnabled(enabled)
+            end
+        end
+        moduleUI.rootModuleCountText:SetText(
+            tostring(enabledCount) .. " enabled • 6 installed"
+        )
+    end
 
-    local launcherCard = CreateFlatPanel(
-        rootPanel,
-        16,
-        -660,
-        820,
-        92
-    )
+    local launcherCard = NewCard()
+    launcherCard:SetPoint("TOPLEFT", rootPanel, "TOPLEFT", 16, -504)
+    launcherCard:SetPoint("TOPRIGHT", rootPanel, "TOPRIGHT", -16, -504)
+    launcherCard:SetHeight(76)
 
-    local launcherTitle = Label(
-        launcherCard,
-        "Minimap Launcher",
-        "GameFontNormalLarge"
-    )
-    launcherTitle:SetPoint(
-        "TOPLEFT",
-        launcherCard,
-        "TOPLEFT",
-        18,
-        -16
-    )
+    local launcherTitle = Label(launcherCard, "Minimap Launcher", "GameFontNormalLarge")
+    launcherTitle:SetPoint("TOPLEFT", launcherCard, "TOPLEFT", 18, -12)
     SetFontColor(launcherTitle, THEME.text)
 
     moduleUI.minimapButtonCheck = Checkbox(
         launcherCard,
         "Show Kaylii Helper minimap button",
         14,
-        -48,
+        -40,
         function(value)
             if BW.SetMinimapButtonShown then
                 BW:SetMinimapButtonShown(value)
@@ -4429,20 +4514,9 @@ local function BuildRootPanel()
         end
     )
 
-    local resetMinimap = CreateFrame(
-        "Button",
-        nil,
-        launcherCard,
-        "UIPanelButtonTemplate"
-    )
+    local resetMinimap = CreateFrame("Button", nil, launcherCard, "UIPanelButtonTemplate")
     resetMinimap:SetSize(150, 28)
-    resetMinimap:SetPoint(
-        "TOPRIGHT",
-        launcherCard,
-        "TOPRIGHT",
-        -18,
-        -42
-    )
+    resetMinimap:SetPoint("RIGHT", launcherCard, "RIGHT", -18, 0)
     resetMinimap:SetText("Reset minimap position")
     resetMinimap:SetScript("OnClick", function()
         if BW.ResetMinimapButtonPosition then
@@ -4475,8 +4549,18 @@ local function BuildRootPanel()
             BW.db.survivalModuleEnabled and true or false
         )
 
+        -- Keep the standalone 2.0 module in step with the dashboard switch,
+        -- including when the dashboard is opened after a previous toggle.
+        SetStandaloneModuleEnabled("buff", BW.db.buffWhitelistModuleEnabled ~= false)
+        SetStandaloneModuleEnabled("lust", BW.db.lustUpEnabled and true or false)
+        SetStandaloneModuleEnabled("stats", BW.db.statsModuleEnabled and true or false)
+        SetStandaloneModuleEnabled("talent", BW.db.talentLoadoutEnabled and true or false)
+        SetStandaloneModuleEnabled("raidspec", BW.db.raidFrameSpecEnabled and true or false)
+        SetStandaloneModuleEnabled("survival", BW.db.survivalModuleEnabled and true or false)
+
         BW:RefreshRaidFrameSpecOptions()
         BW:RefreshMinimapButtonOptions()
+        moduleUI.UpdateRootModuleDashboard()
     end)
 end
 
@@ -4486,7 +4570,7 @@ local function BuildPanelShell()
 
     local title = Label(
         panel,
-        "Buff White List — Blizzard Target Frame",
+        "Buff White List",
         "GameFontNormalLarge"
     )
     title:SetPoint("TOPLEFT", panel, "TOPLEFT", 18, -18)
@@ -4525,13 +4609,20 @@ local function BuildPanelShell()
 
     local desc = Label(
         panel,
-        "Independent buff/debuff grids, filters, blacklist, priorities, and text controls.",
+        "Control target and focus auras.",
         "GameFontHighlight"
     )
     desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
     desc:SetWidth(760)
     desc:SetJustifyH("LEFT")
     SetFontColor(desc, THEME.subtext)
+    moduleUI.ApplyModuleHeader(
+        panel, title, desc, buffPageEnabledCheck, moduleStatus,
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavBuff.tga"
+    )
+    local buffDependency = Label(panel, "Uses Blizzard default target / focus frames.", "GameFontHighlightSmall")
+    buffDependency:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -2)
+    SetFontColor(buffDependency, THEME.accentHover)
 
     layoutTab = CreateFrame(
         "Button",
@@ -4585,55 +4676,54 @@ local function BuildPanelShell()
 end
 
 local function BuildLayoutPage()
-    --------------------------------------------------
-    -- LAYOUT PAGE
-    --------------------------------------------------
-
     layoutPage = CreateFrame("Frame", nil, panel)
     layoutPage:Hide()
-    layoutPage:SetPoint(
-        "TOPLEFT",
-        panel,
-        "TOPLEFT",
-        0,
-        -132
-    )
-    layoutPage:SetPoint(
-        "BOTTOMRIGHT",
-        panel,
-        "BOTTOMRIGHT",
-        0,
-        0
-    )
+    layoutPage:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -132)
+    layoutPage:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 0)
+
+    local controlBar = CreateFrame("Frame", nil, layoutPage, "BackdropTemplate")
+    controlBar:SetPoint("TOPLEFT", layoutPage, "TOPLEFT", 10, -8)
+    controlBar:SetPoint("TOPRIGHT", layoutPage, "TOPRIGHT", -10, -8)
+    controlBar:SetHeight(58)
+    ApplyBackdrop(controlBar, THEME.section, THEME.border, THEME.flatSectionBackdrop)
 
     focusCheck = Checkbox(
-        layoutPage,
-        "Also apply layout/filter to Blizzard Focus Frame",
-        12,
-        -4,
+        controlBar,
+        "Apply to focus",
+        0,
+        0,
         function(value)
             BW.db.applyToFocus = value
             BW:SetupFocusFrame()
         end
     )
-
     previewCheck = Checkbox(
-        layoutPage,
-        "Show draggable preview (B1/B2… D1/D2…)",
-        360,
-        -4,
+        controlBar,
+        "Show draggable preview",
+        0,
+        0,
         function(value)
             BW.db.showLayoutPreview = value
             BW:RefreshLayoutPreview()
         end
     )
+    local function PlaceToggle(check, left, right)
+        check.Label:ClearAllPoints()
+        check.Label:SetPoint("LEFT", controlBar, "LEFT", left, 0)
+        check.Label:SetPoint("RIGHT", check, "LEFT", -8, 0)
+        check.Label:SetJustifyH("LEFT")
+        check:ClearAllPoints()
+        check:SetPoint("RIGHT", controlBar, "LEFT", right, 0)
+    end
+    PlaceToggle(focusCheck, 16, 225)
+    PlaceToggle(previewCheck, 250, 493)
 
     iconSizeSlider = Slider(
-        layoutPage,
+        controlBar,
         "Icon size",
-        16,
-        -54,
-        170,
+        520,
+        -9,
+        194,
         12,
         36,
         1,
@@ -4646,535 +4736,196 @@ local function BuildLayoutPage()
         end
     )
 
-    local fineTuneHint = Label(
-        layoutPage,
-        "Move with the mouse: enable the numbered preview, then drag the Buff or Debuff grid directly. Sliders/boxes remain for fine tuning.",
-        "GameFontDisableSmall"
-    )
-    fineTuneHint:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        16,
-        -92
-    )
-    fineTuneHint:SetWidth(640)
-    fineTuneHint:SetJustifyH("LEFT")
+    local buffPanel = CreateSection(layoutPage, 10, -78, 400, 246, "Buff grid")
+    buffPanel:ClearAllPoints()
+    buffPanel:SetPoint("TOPLEFT", layoutPage, "TOPLEFT", 10, -78)
+    buffPanel:SetPoint("TOPRIGHT", layoutPage, "TOP", -6, -78)
+    buffPanel:SetHeight(270)
 
-    local relationTitle = Label(
-        layoutPage,
-        "Debuff anchor mode:",
-        "GameFontHighlight"
-    )
-    relationTitle:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        270,
-        -47
-    )
+    local debuffPanel = CreateSection(layoutPage, 10, -78, 400, 246, "Debuff grid")
+    debuffPanel:ClearAllPoints()
+    debuffPanel:SetPoint("TOPLEFT", layoutPage, "TOP", 6, -78)
+    debuffPanel:SetPoint("TOPRIGHT", layoutPage, "TOPRIGHT", -10, -78)
+    debuffPanel:SetHeight(270)
 
-    detachedButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    detachedButton:SetSize(90, 23)
-    detachedButton:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        270,
-        -68
-    )
-    detachedButton:SetText("Detached")
-    detachedButton:SetScript("OnClick", function()
-        SetAnchorMode("detached")
-    end)
-
-    aboveButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    aboveButton:SetSize(108, 23)
-    aboveButton:SetPoint(
-        "LEFT",
-        detachedButton,
-        "RIGHT",
-        5,
-        0
-    )
-    aboveButton:SetText("Above buffs")
-    aboveButton:SetScript("OnClick", function()
-        SetAnchorMode("aboveBuffs")
-    end)
-
-    belowButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    belowButton:SetSize(108, 23)
-    belowButton:SetPoint(
-        "LEFT",
-        aboveButton,
-        "RIGHT",
-        5,
-        0
-    )
-    belowButton:SetText("Below buffs")
-    belowButton:SetScript("OnClick", function()
-        SetAnchorMode("belowBuffs")
-    end)
-
-    local relationHelp = Label(
-        layoutPage,
-        "When attached, Debuff X/Y become fine offsets from the buff grid.",
-        "GameFontDisableSmall"
-    )
-    relationHelp:SetPoint(
-        "TOPLEFT",
-        relationTitle,
-        "BOTTOMLEFT",
-        0,
-        -52
-    )
-
-    --------------------------------------------------
-    -- BUFF GRID
-    --------------------------------------------------
-
-    local buffTitle = Label(
-        layoutPage,
-        "BUFF GRID",
-        "GameFontNormalLarge"
-    )
-    buffTitle:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        16,
-        -132
-    )
-
-    buffXSlider = Slider(
-        layoutPage,
-        "Buff X",
-        16,
-        -166,
-        170,
-        -300,
-        400,
-        1,
-        function(value)
-            return tostring(value)
-        end,
+    buffXSlider = NumberBox(
+        buffPanel, "X offset", 16, -60, -300, 400,
         function(value)
             BW.db.buffOffsetX = value
             BW:RefreshPresentation()
         end
     )
-
-    buffYSlider = Slider(
-        layoutPage,
-        "Buff Y",
-        250,
-        -166,
-        170,
-        -250,
-        300,
-        1,
-        function(value)
-            return tostring(value)
-        end,
+    buffYSlider = NumberBox(
+        buffPanel, "Y offset", 224, -60, -250, 300,
         function(value)
             BW.db.buffOffsetY = value
             BW:RefreshPresentation()
         end
     )
-
     buffColumnsBox = NumberBox(
-        layoutPage,
-        "Columns",
-        16,
-        -218,
-        1,
-        10,
+        buffPanel, "Columns", 16, -106, 1, 10,
         function(value)
             BW.db.buffColumns = value
             BW:RefreshAllContainers()
         end
     )
-
     buffRowsBox = NumberBox(
-        layoutPage,
-        "Rows",
-        150,
-        -218,
-        1,
-        10,
+        buffPanel, "Rows", 224, -106, 1, 10,
         function(value)
             BW.db.buffRows = value
             BW:RefreshAllContainers()
         end
     )
 
-    local buffHorizontal = Label(
-        layoutPage,
-        "Horizontal:",
-        "GameFontHighlight"
-    )
-    buffHorizontal:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        275,
-        -213
-    )
+    local function AlignNumberPair(first, second, parent, y)
+        first.Label:ClearAllPoints()
+        first.Label:SetPoint("LEFT", parent, "TOPLEFT", 16, y)
+        first:ClearAllPoints()
+        first:SetSize(76, 24)
+        first:SetPoint("RIGHT", parent, "TOP", -10, y)
 
-    buffGrowLeftButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    buffGrowLeftButton:SetSize(58, 22)
-    buffGrowLeftButton:SetPoint(
-        "LEFT",
-        buffHorizontal,
-        "RIGHT",
-        8,
-        0
-    )
-    buffGrowLeftButton:SetText("Left")
-    buffGrowLeftButton:SetScript("OnClick", function()
-        BW.db.buffGrowLeft = true
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
+        second.Label:ClearAllPoints()
+        second.Label:SetPoint("LEFT", parent, "TOP", 8, y)
+        second:ClearAllPoints()
+        second:SetSize(76, 24)
+        second:SetPoint("RIGHT", parent, "TOPRIGHT", -16, y)
+    end
+    AlignNumberPair(buffXSlider, buffYSlider, buffPanel, -64)
+    AlignNumberPair(buffColumnsBox, buffRowsBox, buffPanel, -112)
 
-    buffGrowRightButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    buffGrowRightButton:SetSize(58, 22)
-    buffGrowRightButton:SetPoint(
-        "LEFT",
-        buffGrowLeftButton,
-        "RIGHT",
-        4,
-        0
-    )
-    buffGrowRightButton:SetText("Right")
-    buffGrowRightButton:SetScript("OnClick", function()
-        BW.db.buffGrowLeft = false
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
-
-    local buffVertical = Label(
-        layoutPage,
-        "Vertical:",
-        "GameFontHighlight"
-    )
-    buffVertical:SetPoint(
-        "LEFT",
-        buffGrowRightButton,
-        "RIGHT",
-        16,
-        0
-    )
-
-    buffGrowUpButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    buffGrowUpButton:SetSize(52, 22)
-    buffGrowUpButton:SetPoint(
-        "LEFT",
-        buffVertical,
-        "RIGHT",
-        8,
-        0
-    )
-    buffGrowUpButton:SetText("Up")
-    buffGrowUpButton:SetScript("OnClick", function()
-        BW.db.buffGrowDown = false
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
-
-    buffGrowDownButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    buffGrowDownButton:SetSize(58, 22)
-    buffGrowDownButton:SetPoint(
-        "LEFT",
-        buffGrowUpButton,
-        "RIGHT",
-        4,
-        0
-    )
-    buffGrowDownButton:SetText("Down")
-    buffGrowDownButton:SetScript("OnClick", function()
-        BW.db.buffGrowDown = true
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
-
-    local buffCapacity = Label(
-        layoutPage,
-        "Capacity = Buff Rows × Columns (up to 40).",
-        "GameFontDisableSmall"
-    )
-    buffCapacity:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        16,
-        -252
-    )
-
-    --------------------------------------------------
-    -- DEBUFF GRID
-    --------------------------------------------------
-
-    local debuffTitle = Label(
-        layoutPage,
-        "DEBUFF GRID",
-        "GameFontNormalLarge"
-    )
-    debuffTitle:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        16,
-        -291
-    )
-
-    debuffXSlider = Slider(
-        layoutPage,
-        "Debuff X",
-        16,
-        -325,
-        170,
-        -300,
-        400,
-        1,
+    local buffHorizontal = Label(buffPanel, "Horizontal:", "GameFontHighlight")
+    buffHorizontal:SetPoint("LEFT", buffPanel, "TOPLEFT", 16, -164)
+    moduleUI.buffGrowHorizontalDropdown = moduleUI.CreateChoiceDropdown(
+        buffPanel, 0, 0, 250,
+        {
+            { key = "left", label = "Left" },
+            { key = "right", label = "Right" },
+        },
         function(value)
-            return tostring(value)
-        end,
+            BW.db.buffGrowLeft = value == "left"
+            UpdateDirectionButtons()
+            BW:RefreshPresentation()
+        end
+    )
+    moduleUI.buffGrowHorizontalDropdown:ClearAllPoints()
+    moduleUI.buffGrowHorizontalDropdown:SetPoint("LEFT", buffHorizontal, "RIGHT", 8, 0)
+    moduleUI.buffGrowHorizontalDropdown:SetPoint("RIGHT", buffPanel, "RIGHT", -16, -164)
+    local buffVertical = Label(buffPanel, "Vertical:", "GameFontHighlight")
+    buffVertical:SetPoint("LEFT", buffPanel, "TOPLEFT", 16, -211)
+    moduleUI.buffGrowVerticalDropdown = moduleUI.CreateChoiceDropdown(
+        buffPanel, 0, 0, 250,
+        {
+            { key = "up", label = "Up" },
+            { key = "down", label = "Down" },
+        },
+        function(value)
+            BW.db.buffGrowDown = value == "down"
+            UpdateDirectionButtons()
+            BW:RefreshPresentation()
+        end
+    )
+    moduleUI.buffGrowVerticalDropdown:ClearAllPoints()
+    moduleUI.buffGrowVerticalDropdown:SetPoint("LEFT", buffVertical, "RIGHT", 8, 0)
+    moduleUI.buffGrowVerticalDropdown:SetPoint("RIGHT", buffPanel, "RIGHT", -16, -211)
+
+    debuffXSlider = NumberBox(
+        debuffPanel, "X offset", 16, -60, -300, 400,
         function(value)
             BW.db.debuffOffsetX = value
             BW:RefreshPresentation()
         end
     )
-
-    debuffYSlider = Slider(
-        layoutPage,
-        "Debuff Y",
-        250,
-        -325,
-        170,
-        -250,
-        300,
-        1,
-        function(value)
-            return tostring(value)
-        end,
+    debuffYSlider = NumberBox(
+        debuffPanel, "Y offset", 224, -60, -250, 300,
         function(value)
             BW.db.debuffOffsetY = value
             BW:RefreshPresentation()
         end
     )
-
     debuffColumnsBox = NumberBox(
-        layoutPage,
-        "Columns",
-        16,
-        -377,
-        1,
-        10,
+        debuffPanel, "Columns", 16, -106, 1, 10,
         function(value)
             BW.db.debuffColumns = value
             BW:RefreshAllContainers()
         end
     )
-
     debuffRowsBox = NumberBox(
-        layoutPage,
-        "Rows",
-        150,
-        -377,
-        1,
-        10,
+        debuffPanel, "Rows", 224, -106, 1, 10,
         function(value)
             BW.db.debuffRows = value
             BW:RefreshAllContainers()
         end
     )
 
-    local debuffHorizontal = Label(
-        layoutPage,
-        "Horizontal:",
-        "GameFontHighlight"
-    )
-    debuffHorizontal:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        275,
-        -372
-    )
+    AlignNumberPair(debuffXSlider, debuffYSlider, debuffPanel, -64)
+    AlignNumberPair(debuffColumnsBox, debuffRowsBox, debuffPanel, -112)
 
-    debuffGrowLeftButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
+    local debuffHorizontal = Label(debuffPanel, "Horizontal:", "GameFontHighlight")
+    debuffHorizontal:SetPoint("LEFT", debuffPanel, "TOPLEFT", 16, -164)
+    moduleUI.debuffGrowHorizontalDropdown = moduleUI.CreateChoiceDropdown(
+        debuffPanel, 0, 0, 250,
+        {
+            { key = "left", label = "Left" },
+            { key = "right", label = "Right" },
+        },
+        function(value)
+            BW.db.debuffGrowLeft = value == "left"
+            UpdateDirectionButtons()
+            BW:RefreshPresentation()
+        end
     )
-    debuffGrowLeftButton:SetSize(58, 22)
-    debuffGrowLeftButton:SetPoint(
-        "LEFT",
-        debuffHorizontal,
-        "RIGHT",
-        8,
-        0
+    moduleUI.debuffGrowHorizontalDropdown:ClearAllPoints()
+    moduleUI.debuffGrowHorizontalDropdown:SetPoint("LEFT", debuffHorizontal, "RIGHT", 8, 0)
+    moduleUI.debuffGrowHorizontalDropdown:SetPoint("RIGHT", debuffPanel, "RIGHT", -16, -164)
+    local debuffVertical = Label(debuffPanel, "Vertical:", "GameFontHighlight")
+    debuffVertical:SetPoint("LEFT", debuffPanel, "TOPLEFT", 16, -211)
+    moduleUI.debuffGrowVerticalDropdown = moduleUI.CreateChoiceDropdown(
+        debuffPanel, 0, 0, 250,
+        {
+            { key = "up", label = "Up" },
+            { key = "down", label = "Down" },
+        },
+        function(value)
+            BW.db.debuffGrowDown = value == "down"
+            UpdateDirectionButtons()
+            BW:RefreshPresentation()
+        end
     )
-    debuffGrowLeftButton:SetText("Left")
-    debuffGrowLeftButton:SetScript("OnClick", function()
-        BW.db.debuffGrowLeft = true
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
+    moduleUI.debuffGrowVerticalDropdown:ClearAllPoints()
+    moduleUI.debuffGrowVerticalDropdown:SetPoint("LEFT", debuffVertical, "RIGHT", 8, 0)
+    moduleUI.debuffGrowVerticalDropdown:SetPoint("RIGHT", debuffPanel, "RIGHT", -16, -211)
 
-    debuffGrowRightButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
+    local anchorBar = CreateFrame("Frame", nil, layoutPage, "BackdropTemplate")
+    anchorBar:SetPoint("TOPLEFT", layoutPage, "TOPLEFT", 10, -358)
+    anchorBar:SetPoint("TOPRIGHT", layoutPage, "TOPRIGHT", -10, -358)
+    anchorBar:SetHeight(48)
+    ApplyBackdrop(anchorBar, THEME.section, THEME.border, THEME.flatSectionBackdrop)
+    local anchorLabel = Label(anchorBar, "Debuff anchor", "GameFontHighlight")
+    anchorLabel:SetPoint("LEFT", anchorBar, "LEFT", 16, 0)
+    moduleUI.debuffAnchorModeDropdown = moduleUI.CreateChoiceDropdown(
+        anchorBar, 0, 0, 230,
+        {
+            { key = "detached", label = "Detached" },
+            { key = "aboveBuffs", label = "Above buffs" },
+            { key = "belowBuffs", label = "Below buffs" },
+        },
+        SetAnchorMode
     )
-    debuffGrowRightButton:SetSize(58, 22)
-    debuffGrowRightButton:SetPoint(
-        "LEFT",
-        debuffGrowLeftButton,
-        "RIGHT",
-        4,
-        0
-    )
-    debuffGrowRightButton:SetText("Right")
-    debuffGrowRightButton:SetScript("OnClick", function()
-        BW.db.debuffGrowLeft = false
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
+    moduleUI.debuffAnchorModeDropdown:ClearAllPoints()
+    moduleUI.debuffAnchorModeDropdown:SetPoint("LEFT", anchorLabel, "RIGHT", 12, 0)
 
-    local debuffVertical = Label(
-        layoutPage,
-        "Vertical:",
-        "GameFontHighlight"
-    )
-    debuffVertical:SetPoint(
-        "LEFT",
-        debuffGrowRightButton,
-        "RIGHT",
-        16,
-        0
-    )
-
-    debuffGrowUpButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    debuffGrowUpButton:SetSize(52, 22)
-    debuffGrowUpButton:SetPoint(
-        "LEFT",
-        debuffVertical,
-        "RIGHT",
-        8,
-        0
-    )
-    debuffGrowUpButton:SetText("Up")
-    debuffGrowUpButton:SetScript("OnClick", function()
-        BW.db.debuffGrowDown = false
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
-
-    debuffGrowDownButton = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
-    debuffGrowDownButton:SetSize(58, 22)
-    debuffGrowDownButton:SetPoint(
-        "LEFT",
-        debuffGrowUpButton,
-        "RIGHT",
-        4,
-        0
-    )
-    debuffGrowDownButton:SetText("Down")
-    debuffGrowDownButton:SetScript("OnClick", function()
-        BW.db.debuffGrowDown = true
-        UpdateDirectionButtons()
-        BW:RefreshPresentation()
-    end)
-
-    local debuffCapacity = Label(
-        layoutPage,
-        "Capacity = Debuff Rows × Columns (up to 40). Detached mode uses its own absolute X/Y anchor.",
-        "GameFontDisableSmall"
-    )
-    debuffCapacity:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        16,
-        -411
-    )
-    debuffCapacity:SetWidth(650)
-    debuffCapacity:SetJustifyH("LEFT")
-
-    local resetLayout = CreateFrame(
-        "Button",
-        nil,
-        layoutPage,
-        "UIPanelButtonTemplate"
-    )
+    local resetLayout = CreateFrame("Button", nil, layoutPage, "UIPanelButtonTemplate")
     resetLayout:SetSize(120, 24)
-    resetLayout:SetPoint(
-        "TOPLEFT",
-        layoutPage,
-        "TOPLEFT",
-        16,
-        -455
-    )
+    resetLayout:SetPoint("TOPLEFT", layoutPage, "TOPLEFT", 12, -418)
     resetLayout:SetText("Reset layout")
     resetLayout:SetScript("OnClick", function()
         BW.db.iconSize = 18
-
         BW.db.buffOffsetX = 0
         BW.db.buffOffsetY = 29
         BW.db.buffColumns = 5
         BW.db.buffRows = 1
         BW.db.buffGrowLeft = false
         BW.db.buffGrowDown = false
-
         BW.db.debuffAnchorMode = "belowBuffs"
         BW.db.debuffOffsetX = 0
         BW.db.debuffOffsetY = 0
@@ -5182,11 +4933,10 @@ local function BuildLayoutPage()
         BW.db.debuffRows = 1
         BW.db.debuffGrowLeft = false
         BW.db.debuffGrowDown = false
-
         BW:RefreshAllContainers()
         BW:RefreshOptions()
     end)
-
+    SkinButton(resetLayout)
 end
 
 local function BuildTextPage()
@@ -6046,6 +5796,7 @@ local function BuildAuraPage()
         -36,
         62
     )
+    moduleUI.SkinScrollFrame(auraScroll)
 
     local listBackground = CreateFrame(
         "Frame",
@@ -6072,7 +5823,7 @@ local function BuildAuraPage()
     )
     ApplyBackdrop(
         listBackground,
-        { 0.045, 0.060, 0.085, 0.82 },
+        THEME.section,
         THEME.border
     )
 
@@ -6238,7 +5989,6 @@ local function BuildLustPage()
     desc:SetWidth(760)
     desc:SetJustifyH("LEFT")
     SetFontColor(desc, THEME.subtext)
-
     lustPageEnabledCheck = Checkbox(
         lustPanel,
         "Enable Lust Up module",
@@ -6254,34 +6004,123 @@ local function BuildLustPage()
             BW:RefreshLustUpOptions()
         end
     )
+    moduleUI.ApplyModuleHeader(
+        lustPanel, title, desc, lustPageEnabledCheck, moduleStatus,
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavLust.tga"
+    )
 
     lustPage = CreateFrame("Frame", nil, lustPanel)
-    lustPage:SetPoint("TOPLEFT", lustPanel, "TOPLEFT", 0, -112)
+    lustPage:SetPoint("TOPLEFT", lustPanel, "TOPLEFT", 0, -96)
     lustPage:SetPoint("BOTTOMRIGHT", lustPanel, "BOTTOMRIGHT", 0, 0)
 
+    moduleUI.lustTabs = {}
+    moduleUI.lustTabPages = {}
+    local lustTabNames = {
+        { key = "general", label = "General", width = 144 },
+        { key = "alerts", label = "Alerts", width = 126 },
+        { key = "appearance", label = "Appearance", width = 150 },
+        { key = "tracked", label = "Tracked Items", width = 168 },
+    }
+    local previousLustTab
+    for _, tabInfo in ipairs(lustTabNames) do
+        local tabKey = tabInfo.key
+        local tab = CreateFrame("Button", nil, lustPage, "UIPanelButtonTemplate")
+        tab:SetSize(tabInfo.width, 30)
+        if previousLustTab then
+            tab:SetPoint("LEFT", previousLustTab, "RIGHT", 4, 0)
+        else
+            tab:SetPoint("TOPLEFT", lustPage, "TOPLEFT", 14, -4)
+        end
+        tab:SetText(tabInfo.label)
+        SkinButton(tab)
+        moduleUI.lustTabs[tabKey] = tab
+        previousLustTab = tab
+
+        local page = CreateFrame("Frame", nil, lustPage)
+        page:SetPoint("TOPLEFT", lustPage, "TOPLEFT", 0, -38)
+        page:SetPoint("BOTTOMRIGHT", lustPage, "BOTTOMRIGHT", 0, 0)
+        moduleUI.lustTabPages[tabKey] = page
+        tab:SetScript("OnClick", function()
+            moduleUI.lustCurrentTab = tabKey
+            for key, tabPage in pairs(moduleUI.lustTabPages) do
+                local selected = key == tabKey
+                tabPage:SetShown(selected)
+                SetButtonActiveState(moduleUI.lustTabs[key], selected)
+            end
+        end)
+    end
+    moduleUI.lustCurrentTab = moduleUI.lustCurrentTab or "general"
+    for key, tabPage in pairs(moduleUI.lustTabPages) do
+        local selected = key == moduleUI.lustCurrentTab
+        tabPage:SetShown(selected)
+        SetButtonActiveState(moduleUI.lustTabs[key], selected)
+    end
+
+    local generalPage = moduleUI.lustTabPages.general
+    local alertsPage = moduleUI.lustTabPages.alerts
+    local appearancePage = moduleUI.lustTabPages.appearance
+    local trackedPage = moduleUI.lustTabPages.tracked
+
     --------------------------------------------------
-    -- TOP ROW
+    -- GENERAL AND ALERT SETTINGS
     --------------------------------------------------
 
     local visibilityCard = CreateSection(
-        lustPage,
+        alertsPage,
         14,
         -8,
         394,
         350,
-        "Visibility & Alerts",
-        "Dungeon/Raid filters apply to the indicator and automatic voice/chat alerts. Tracking continues in the background."
+        "Voice alerts",
+        "Speak when Lust lockouts end or a boss pull begins."
     )
 
     local indicatorCard = CreateSection(
-        lustPage,
-        424,
-        -8,
+        generalPage,
+        14,
+        -316,
         394,
-        350,
+        164,
         "Indicator",
-        "Resize the icon or unlock it to drag anywhere on screen."
+        ""
     )
+
+    local generalVisibilityCard = CreateSection(
+        generalPage, 14, -8, 394, 174, "Visibility", ""
+    )
+    local sourcesCard = CreateSection(
+        generalPage, 14, -190, 394, 118, "Sources", ""
+    )
+    local alertsChatCard = CreateSection(
+        alertsPage, 424, -8, 394, 160, "Ready chat",
+        "Choose where the ready message is sent."
+    )
+    local appearanceCard = CreateSection(
+        appearancePage, 14, -8, 394, 168, "Indicator behavior",
+        "Choose when the indicator is shown and reset its position."
+    )
+    local appearanceSliderCard = CreateSection(
+        appearancePage, 424, -8, 394, 264, "Indicator appearance",
+        "Adjust the size and opacity of the on-screen indicator."
+    )
+    local trackedDrumsCard = CreateSection(
+        trackedPage, 424, -8, 394, 360, "Drum items",
+        "Manage custom drum items used as Lust sources."
+    )
+
+    local function PlaceLustCheck(check, parent, y)
+        check:SetParent(parent)
+        check:ClearAllPoints()
+        check:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -18, y)
+        if check.Label then
+            check.Label:SetParent(parent)
+            check.Label:ClearAllPoints()
+            check.Label:SetPoint("LEFT", parent, "TOPLEFT", 18, y - 11)
+            check.Label:SetPoint("RIGHT", check, "LEFT", -12, 0)
+            check.Label:SetJustifyH("LEFT")
+            check.Label:SetJustifyV("MIDDLE")
+        end
+    end
 
     --------------------------------------------------
     -- VISIBILITY & ALERTS
@@ -6654,6 +6493,9 @@ local function BuildLustPage()
             end
         end
     )
+    -- Keep the size slider on moduleUI because the appearance tab reparents
+    -- it into the shared preview card below.
+    moduleUI.lustUpSizeSlider = lustUpSizeSlider
 
     lustUpUnlockCheck = Checkbox(
         indicatorCard,
@@ -6721,29 +6563,6 @@ local function BuildLustPage()
         end
     )
 
-    local manageDrums = CreateFrame(
-        "Button",
-        nil,
-        indicatorCard,
-        "UIPanelButtonTemplate"
-    )
-    manageDrums:SetSize(118, 26)
-    manageDrums:SetPoint(
-        "TOPRIGHT",
-        indicatorCard,
-        "TOPRIGHT",
-        -18,
-        -252
-    )
-    manageDrums:SetText("Manage drums")
-    manageDrums:SetScript("OnClick", function()
-        if moduleUI.lustDrumManager then
-            moduleUI.lustDrumManager:Show()
-            BW:RefreshLustUpOptions()
-        end
-    end)
-    SkinButton(manageDrums)
-
     moduleUI.lustIndicatorClickableCheck = Checkbox(
         indicatorCard,
         "Make indicator clickable",
@@ -6773,38 +6592,51 @@ local function BuildLustPage()
         end
     )
 
+    PlaceLustCheck(lustUpOnlyInCombatCheck, generalVisibilityCard, -48)
+    PlaceLustCheck(lustUpOnlyInInstanceCheck, generalVisibilityCard, -80)
+    PlaceLustCheck(moduleUI.lustShowDungeonsCheck, generalVisibilityCard, -112)
+    PlaceLustCheck(moduleUI.lustShowRaidsCheck, generalVisibilityCard, -144)
+    PlaceLustCheck(moduleUI.lustRequireAbilityCheck, sourcesCard, -52)
+    PlaceLustCheck(moduleUI.lustAllowDrumsCheck, sourcesCard, -84)
+    PlaceLustCheck(moduleUI.lustIndicatorClickableCheck, indicatorCard, -48)
+    PlaceLustCheck(moduleUI.lustReadyGlowCheck, indicatorCard, -80)
+    PlaceLustCheck(lustUpUnlockCheck, indicatorCard, -112)
+    PlaceLustCheck(lustUpVoiceCheck, visibilityCard, -64)
+    PlaceLustCheck(lustUpBossPullVoiceCheck, visibilityCard, -158)
+
+    if lustUpModeButton._khLabel then
+        lustUpModeButton._khLabel:SetParent(appearanceCard)
+        lustUpModeButton._khLabel:ClearAllPoints()
+        lustUpModeButton._khLabel:SetPoint("TOPLEFT", appearanceCard, "TOPLEFT", 18, -64)
+        lustUpModeButton._khLabel:SetWidth(150)
+        lustUpModeButton._khLabel:SetJustifyH("LEFT")
+        lustUpModeButton:SetParent(appearanceCard)
+        lustUpModeButton:SetSize(190, 28)
+        lustUpModeButton:ClearAllPoints()
+        lustUpModeButton:SetPoint("TOPRIGHT", appearanceCard, "TOPRIGHT", -18, -58)
+    end
+
+    lustChatLabel:SetParent(alertsChatCard)
+    lustChatLabel:ClearAllPoints()
+    lustChatLabel:SetPoint("TOPLEFT", alertsChatCard, "TOPLEFT", 18, -66)
+    moduleUI.lustReadyChatButton:SetParent(alertsChatCard)
+    moduleUI.lustReadyChatButton:SetSize(208, 28)
+    moduleUI.lustReadyChatButton:ClearAllPoints()
+    moduleUI.lustReadyChatButton:SetPoint("TOPRIGHT", alertsChatCard, "TOPRIGHT", -18, -60)
+
+    resetPosition:SetParent(appearanceCard)
+    resetPosition:ClearAllPoints()
+    resetPosition:SetPoint("TOPLEFT", appearanceCard, "TOPLEFT", 18, -112)
+
     --------------------------------------------------
-    -- LIVE STATUS
+    -- INDICATOR APPEARANCE CONTROLS
     --------------------------------------------------
 
-    local statusCard = CreateSection(
-        lustPage,
-        14,
-        -370,
-        804,
-        132,
-        "Live Status",
-        "Current lust readiness as seen by the tracker."
-    )
-
-    lustUpStatusText = Label(
-        statusCard,
-        "Status: checking...",
-        "GameFontNormal"
-    )
-    lustUpStatusText:SetPoint(
-        "TOPLEFT",
-        statusCard,
-        "TOPLEFT",
-        18,
-        -58
-    )
-    lustUpStatusText:SetWidth(760)
-    lustUpStatusText:SetJustifyH("LEFT")
-    SetFontColor(lustUpStatusText, THEME.accent)
+    moduleUI.lustUpSizeSlider:SetParent(appearanceSliderCard)
+    moduleUI.lustUpSizeSlider.ValueBox:SetParent(appearanceSliderCard)
 
     moduleUI.lustReadyAlphaSlider = Slider(
-        statusCard,
+        appearanceSliderCard,
         "Ready alpha",
         18,
         -104,
@@ -6825,9 +6657,9 @@ local function BuildLustPage()
     )
 
     moduleUI.lustLockedAlphaSlider = Slider(
-        statusCard,
+        appearanceSliderCard,
         "Locked alpha",
-        412,
+        18,
         -104,
         150,
         10,
@@ -6845,23 +6677,42 @@ local function BuildLustPage()
         end
     )
 
+    local function PlaceLustAppearanceSlider(slider, labelText, labelY, sliderY)
+        slider:ClearAllPoints()
+        slider:SetPoint("TOPLEFT", appearanceSliderCard, "TOPLEFT", 18, sliderY)
+        slider:SetWidth(290)
+        slider.Text:Hide()
+        slider.Low:Hide()
+        slider.High:Hide()
+        slider.ValueBox:ClearAllPoints()
+        slider.ValueBox:SetSize(56, 24)
+        slider.ValueBox:SetPoint("TOPRIGHT", appearanceSliderCard, "TOPRIGHT", -18, labelY)
+        local caption = Label(appearanceSliderCard, labelText, "GameFontHighlight")
+        caption:SetPoint("TOPLEFT", appearanceSliderCard, "TOPLEFT", 18, labelY)
+        SetFontColor(caption, THEME.text)
+    end
+
+    PlaceLustAppearanceSlider(moduleUI.lustUpSizeSlider, "Size", -64, -88)
+    PlaceLustAppearanceSlider(moduleUI.lustReadyAlphaSlider, "Ready opacity", -128, -152)
+    PlaceLustAppearanceSlider(moduleUI.lustLockedAlphaSlider, "Locked opacity", -192, -216)
+
     --------------------------------------------------
     -- TRACKED LOCKOUTS
     --------------------------------------------------
 
     local trackingCard = CreateSection(
-        lustPage,
+        trackedPage,
         14,
-        -514,
-        804,
-        224,
+        -8,
+        394,
+        360,
         "Tracked Lust Lockouts",
-        "Built-in lust variants are already covered. Add a lockout debuff Spell ID only for a new or custom variant."
+        "Add only unlisted custom lockout Spell IDs."
     )
 
     local builtInTitle = Label(
         trackingCard,
-        "Built-in coverage",
+        "Built-in lockouts",
         "GameFontNormal"
     )
     builtInTitle:SetPoint(
@@ -6869,18 +6720,21 @@ local function BuildLustPage()
         trackingCard,
         "TOPLEFT",
         18,
-        -56
+        -76
     )
     SetFontColor(builtInTitle, THEME.text)
 
     local builtIn = Label(
         trackingCard,
-        "Bloodlust / Heroism • Time Warp • Fury of the Aspects (Evoker) • Hunter lust • Drums\n"
-        .. "Lockouts: Exhaustion 57723/390435, Sated 57724, Temporal Displacement 80354, Insanity 95809, Fatigued 160455/264689.",
+        "Exhaustion — 57723, 390435\n"
+        .. "Sated — 57724\n"
+        .. "Temporal Displacement — 80354\n"
+        .. "Insanity — 95809\n"
+        .. "Fatigued — 160455, 264689",
         "GameFontHighlightSmall"
     )
     builtIn:SetPoint("TOPLEFT", builtInTitle, "BOTTOMLEFT", 0, -8)
-    builtIn:SetWidth(750)
+    builtIn:SetWidth(350)
     builtIn:SetJustifyH("LEFT")
     SetFontColor(builtIn, THEME.subtext)
 
@@ -6894,18 +6748,18 @@ local function BuildLustPage()
         trackingCard,
         "TOPLEFT",
         18,
-        -110
+        -174
     )
     SetFontColor(customTitle, THEME.text)
 
-    lustUpCustomBox = CreateVisibleValueBox(trackingCard, 164)
+    lustUpCustomBox = CreateVisibleValueBox(trackingCard, 184)
     lustUpCustomBox:SetMaxLetters(12)
     lustUpCustomBox:SetPoint(
         "TOPLEFT",
         trackingCard,
         "TOPLEFT",
         18,
-        -138
+        -198
     )
     lustUpCustomBox:SetRenderedValue("")
 
@@ -6915,8 +6769,8 @@ local function BuildLustPage()
         trackingCard,
         "UIPanelButtonTemplate"
     )
-    addCustom:SetSize(100, 26)
-    addCustom:SetPoint("LEFT", lustUpCustomBox, "RIGHT", 10, 0)
+    addCustom:SetSize(82, 26)
+    addCustom:SetPoint("LEFT", lustUpCustomBox, "RIGHT", 8, 0)
     addCustom:SetText("Add ID")
     addCustom:SetScript("OnClick", function()
         if BW.AddLustUpLockout
@@ -6927,27 +6781,9 @@ local function BuildLustPage()
     end)
     SkinButton(addCustom)
 
-    local removeCustom = CreateFrame(
-        "Button",
-        nil,
-        trackingCard,
-        "UIPanelButtonTemplate"
-    )
-    removeCustom:SetSize(108, 26)
-    removeCustom:SetPoint("LEFT", addCustom, "RIGHT", 8, 0)
-    removeCustom:SetText("Remove ID")
-    removeCustom:SetScript("OnClick", function()
-        if BW.RemoveLustUpLockout
-            and BW:RemoveLustUpLockout(lustUpCustomBox:GetText()) then
-
-            lustUpCustomBox:SetRenderedValue("")
-        end
-    end)
-    SkinButton(removeCustom)
-
     local customListTitle = Label(
         trackingCard,
-        "Custom IDs currently tracked",
+        "Custom lockouts",
         "GameFontHighlight"
     )
     customListTitle:SetPoint(
@@ -6955,251 +6791,234 @@ local function BuildLustPage()
         trackingCard,
         "TOPLEFT",
         18,
-        -184
+        -230
     )
     SetFontColor(customListTitle, THEME.text)
 
-    lustUpCustomListText = Label(
-        trackingCard,
+    moduleUI.lustCustomLockoutScroll = CreateFrame(
+        "ScrollFrame", nil, trackingCard, "UIPanelScrollFrameTemplate"
+    )
+    moduleUI.lustCustomLockoutScroll:SetPoint(
+        "TOPLEFT", trackingCard, "TOPLEFT", 18, -254
+    )
+    moduleUI.lustCustomLockoutScroll:SetPoint(
+        "BOTTOMRIGHT", trackingCard, "BOTTOMRIGHT", -30, 14
+    )
+    moduleUI.SkinScrollFrame(moduleUI.lustCustomLockoutScroll)
+
+    moduleUI.lustCustomLockoutContent = CreateFrame(
+        "Frame", nil, moduleUI.lustCustomLockoutScroll
+    )
+    moduleUI.lustCustomLockoutContent:SetSize(320, 1)
+    moduleUI.lustCustomLockoutScroll:SetScrollChild(
+        moduleUI.lustCustomLockoutContent
+    )
+    moduleUI.lustCustomLockoutRows = {}
+    moduleUI.lustCustomLockoutEmptyText = Label(
+        moduleUI.lustCustomLockoutContent,
         "None added.",
         "GameFontHighlightSmall"
     )
-    lustUpCustomListText:SetPoint(
-        "TOPLEFT",
-        customListTitle,
-        "BOTTOMLEFT",
-        0,
-        -8
+    moduleUI.lustCustomLockoutEmptyText:SetPoint(
+        "TOPLEFT", moduleUI.lustCustomLockoutContent, "TOPLEFT", 4, -4
     )
-    lustUpCustomListText:SetWidth(750)
-    lustUpCustomListText:SetJustifyH("LEFT")
-    SetFontColor(lustUpCustomListText, THEME.subtext)
+    SetFontColor(moduleUI.lustCustomLockoutEmptyText, THEME.subtext)
+
+    moduleUI.RefreshLustCustomLockoutList = function()
+        local content = moduleUI.lustCustomLockoutContent
+        local scroll = moduleUI.lustCustomLockoutScroll
+        if not content or not scroll or not BW.db then return end
+
+        local entries = {}
+        for key, enabled in pairs(BW.db.lustUpCustomLockouts or {}) do
+            local spellID = tonumber(key)
+            if spellID and enabled then
+                local name
+                if C_Spell and C_Spell.GetSpellInfo then
+                    local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+                    if ok and type(info) == "table" then name = info.name end
+                end
+                if not name and GetSpellInfo then
+                    name = GetSpellInfo(spellID)
+                end
+                entries[#entries + 1] = {
+                    id = spellID,
+                    name = name or ("Spell " .. spellID),
+                }
+            end
+        end
+        table.sort(entries, function(a, b)
+            if a.name == b.name then return a.id < b.id end
+            return a.name < b.name
+        end)
+
+        local rows = moduleUI.lustCustomLockoutRows
+        for _, row in ipairs(rows) do row:Hide() end
+        moduleUI.lustCustomLockoutEmptyText:SetShown(#entries == 0)
+        content:SetWidth(math.max(scroll:GetWidth() - 16, 1))
+
+        for index, entry in ipairs(entries) do
+            local row = rows[index]
+            if not row then
+                row = CreateFrame("Frame", nil, content)
+                row:SetHeight(24)
+                row.label = Label(row, "", "GameFontHighlightSmall")
+                row.label:SetPoint("LEFT", row, "LEFT", 4, 0)
+                row.label:SetPoint("RIGHT", row, "RIGHT", -62, 0)
+                row.label:SetJustifyH("LEFT")
+                SetFontColor(row.label, THEME.text)
+                row.remove = CreateFrame(
+                    "Button", nil, row, "UIPanelButtonTemplate"
+                )
+                row.remove:SetSize(56, 22)
+                row.remove:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+                row.remove:SetText("Remove")
+                SkinButton(row.remove)
+                row.remove:SetScript("OnClick", function(button)
+                    local parentRow = button:GetParent()
+                    if parentRow.spellID and BW.RemoveLustUpLockout then
+                        BW:RemoveLustUpLockout(parentRow.spellID)
+                    end
+                end)
+                rows[index] = row
+            end
+            row.spellID = entry.id
+            row.label:SetText(string.format("%s (%d)", entry.name, entry.id))
+            row:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -((index - 1) * 26))
+            row:SetWidth(content:GetWidth())
+            row:Show()
+        end
+
+        content:SetHeight(math.max(#entries * 26, scroll:GetHeight()))
+        scroll:UpdateScrollChildRect()
+    end
+    moduleUI.lustCustomLockoutScroll:SetScript("OnSizeChanged", function()
+        if moduleUI.RefreshLustCustomLockoutList then
+            moduleUI.RefreshLustCustomLockoutList()
+        end
+    end)
 
     --------------------------------------------------
-    -- LUST DRUM MANAGER
+    -- TRACKED DRUM ITEMS
     --------------------------------------------------
 
-    moduleUI.lustDrumManager = CreateFrame(
-        "Frame",
-        nil,
-        lustPanel,
-        "BackdropTemplate"
+    moduleUI.lustBuiltInDrumTitle = Label(
+        trackedDrumsCard, "Built-in drums", "GameFontNormal"
     )
-    moduleUI.lustDrumManager:SetSize(590, 390)
-    moduleUI.lustDrumManager:SetPoint(
-        "CENTER",
-        lustPanel,
-        "CENTER",
-        0,
-        -10
+    moduleUI.lustBuiltInDrumTitle:SetPoint(
+        "TOPLEFT", trackedDrumsCard, "TOPLEFT", 18, -64
     )
-    moduleUI.lustDrumManager:SetFrameLevel(
-        lustPanel:GetFrameLevel() + 40
-    )
-    moduleUI.lustDrumManager:EnableMouse(true)
-    ApplyBackdrop(
-        moduleUI.lustDrumManager,
-        THEME.panel,
-        THEME.borderAccent
-    )
-    moduleUI.lustDrumManager:Hide()
-
-    local drumTitle = Label(
-        moduleUI.lustDrumManager,
-        "Lust Drums",
-        "GameFontNormalHuge"
-    )
-    drumTitle:SetPoint(
-        "TOPLEFT",
-        moduleUI.lustDrumManager,
-        "TOPLEFT",
-        20,
-        -18
-    )
-    SetFontColor(drumTitle, THEME.text)
-
-    local drumDesc = Label(
-        moduleUI.lustDrumManager,
-        "Built-ins are maintained by Kaylii Helper. Add future drum Item IDs below without waiting for an addon update.",
-        "GameFontHighlightSmall"
-    )
-    drumDesc:SetPoint(
-        "TOPLEFT",
-        drumTitle,
-        "BOTTOMLEFT",
-        0,
-        -8
-    )
-    drumDesc:SetWidth(545)
-    drumDesc:SetJustifyH("LEFT")
-    SetFontColor(drumDesc, THEME.subtext)
-
-    local builtInDrumsTitle = Label(
-        moduleUI.lustDrumManager,
-        "Built-in drums",
-        "GameFontNormal"
-    )
-    builtInDrumsTitle:SetPoint(
-        "TOPLEFT",
-        moduleUI.lustDrumManager,
-        "TOPLEFT",
-        20,
-        -92
-    )
-    SetFontColor(builtInDrumsTitle, THEME.text)
+    SetFontColor(moduleUI.lustBuiltInDrumTitle, THEME.text)
 
     moduleUI.lustBuiltInDrumListText = Label(
-        moduleUI.lustDrumManager,
-        "",
-        "GameFontHighlightSmall"
+        trackedDrumsCard, "", "GameFontHighlightSmall"
     )
     moduleUI.lustBuiltInDrumListText:SetPoint(
-        "TOPLEFT",
-        builtInDrumsTitle,
-        "BOTTOMLEFT",
-        0,
-        -8
+        "TOPLEFT", moduleUI.lustBuiltInDrumTitle, "BOTTOMLEFT", 0, -7
     )
-    moduleUI.lustBuiltInDrumListText:SetWidth(545)
+    moduleUI.lustBuiltInDrumListText:SetWidth(350)
     moduleUI.lustBuiltInDrumListText:SetJustifyH("LEFT")
-    SetFontColor(
-        moduleUI.lustBuiltInDrumListText,
-        THEME.subtext
-    )
+    SetFontColor(moduleUI.lustBuiltInDrumListText, THEME.subtext)
 
-    local customDrumTitle = Label(
-        moduleUI.lustDrumManager,
-        "Additional drum Item ID",
-        "GameFontNormal"
+    moduleUI.lustCustomDrumTitle = Label(
+        trackedDrumsCard, "Additional drum Item ID", "GameFontNormal"
     )
-    customDrumTitle:SetPoint(
-        "TOPLEFT",
-        moduleUI.lustDrumManager,
-        "TOPLEFT",
-        20,
-        -170
+    moduleUI.lustCustomDrumTitle:SetPoint(
+        "TOPLEFT", trackedDrumsCard, "TOPLEFT", 18, -150
     )
-    SetFontColor(customDrumTitle, THEME.text)
+    SetFontColor(moduleUI.lustCustomDrumTitle, THEME.text)
 
-    moduleUI.lustCustomDrumBox =
-        CreateVisibleValueBox(
-            moduleUI.lustDrumManager,
-            160
-        )
+    moduleUI.lustCustomDrumBox = CreateVisibleValueBox(trackedDrumsCard, 138)
     moduleUI.lustCustomDrumBox:SetMaxLetters(12)
     moduleUI.lustCustomDrumBox:SetPoint(
-        "TOPLEFT",
-        moduleUI.lustDrumManager,
-        "TOPLEFT",
-        20,
-        -202
+        "TOPLEFT", trackedDrumsCard, "TOPLEFT", 18, -176
     )
     moduleUI.lustCustomDrumBox:SetRenderedValue("")
 
-    local addDrum = CreateFrame(
-        "Button",
-        nil,
-        moduleUI.lustDrumManager,
-        "UIPanelButtonTemplate"
+    moduleUI.lustCustomDrumAddButton = CreateFrame(
+        "Button", nil, trackedDrumsCard, "UIPanelButtonTemplate"
     )
-    addDrum:SetSize(96, 26)
-    addDrum:SetPoint(
-        "LEFT",
-        moduleUI.lustCustomDrumBox,
-        "RIGHT",
-        10,
-        0
+    moduleUI.lustCustomDrumAddButton:SetSize(78, 26)
+    moduleUI.lustCustomDrumAddButton:SetPoint(
+        "LEFT", moduleUI.lustCustomDrumBox, "RIGHT", 7, 0
     )
-    addDrum:SetText("Add ID")
-    addDrum:SetScript("OnClick", function()
+    moduleUI.lustCustomDrumAddButton:SetText("Add ID")
+    moduleUI.lustCustomDrumAddButton:SetScript("OnClick", function()
         if BW.AddLustUpDrumItem
-            and BW:AddLustUpDrumItem(
-                moduleUI.lustCustomDrumBox:GetText()
-            ) then
-
+            and BW:AddLustUpDrumItem(moduleUI.lustCustomDrumBox:GetText()) then
             moduleUI.lustCustomDrumBox:SetRenderedValue("")
         end
     end)
-    SkinButton(addDrum)
+    SkinButton(moduleUI.lustCustomDrumAddButton)
 
-    local removeDrum = CreateFrame(
-        "Button",
-        nil,
-        moduleUI.lustDrumManager,
-        "UIPanelButtonTemplate"
+    moduleUI.lustCustomDrumRemoveButton = CreateFrame(
+        "Button", nil, trackedDrumsCard, "UIPanelButtonTemplate"
     )
-    removeDrum:SetSize(104, 26)
-    removeDrum:SetPoint(
-        "LEFT",
-        addDrum,
-        "RIGHT",
-        8,
-        0
+    moduleUI.lustCustomDrumRemoveButton:SetSize(88, 26)
+    moduleUI.lustCustomDrumRemoveButton:SetPoint(
+        "LEFT", moduleUI.lustCustomDrumAddButton, "RIGHT", 6, 0
     )
-    removeDrum:SetText("Remove ID")
-    removeDrum:SetScript("OnClick", function()
+    moduleUI.lustCustomDrumRemoveButton:SetText("Remove ID")
+    moduleUI.lustCustomDrumRemoveButton:SetScript("OnClick", function()
         if BW.RemoveLustUpDrumItem
-            and BW:RemoveLustUpDrumItem(
-                moduleUI.lustCustomDrumBox:GetText()
-            ) then
-
+            and BW:RemoveLustUpDrumItem(moduleUI.lustCustomDrumBox:GetText()) then
             moduleUI.lustCustomDrumBox:SetRenderedValue("")
         end
     end)
-    SkinButton(removeDrum)
+    SkinButton(moduleUI.lustCustomDrumRemoveButton)
 
-    local customDrumListTitle = Label(
-        moduleUI.lustDrumManager,
-        "Custom drums",
-        "GameFontNormal"
+    moduleUI.lustCustomDrumListTitle = Label(
+        trackedDrumsCard, "Custom drums", "GameFontNormal"
     )
-    customDrumListTitle:SetPoint(
-        "TOPLEFT",
-        moduleUI.lustDrumManager,
-        "TOPLEFT",
-        20,
-        -252
+    moduleUI.lustCustomDrumListTitle:SetPoint(
+        "TOPLEFT", trackedDrumsCard, "TOPLEFT", 18, -214
     )
-    SetFontColor(customDrumListTitle, THEME.text)
+    SetFontColor(moduleUI.lustCustomDrumListTitle, THEME.text)
 
+    moduleUI.lustCustomDrumScroll = CreateFrame(
+        "ScrollFrame", nil, trackedDrumsCard, "UIPanelScrollFrameTemplate"
+    )
+    moduleUI.lustCustomDrumScroll:SetPoint(
+        "TOPLEFT", trackedDrumsCard, "TOPLEFT", 18, -238
+    )
+    moduleUI.lustCustomDrumScroll:SetPoint(
+        "BOTTOMRIGHT", trackedDrumsCard, "BOTTOMRIGHT", -30, 14
+    )
+    moduleUI.SkinScrollFrame(moduleUI.lustCustomDrumScroll)
+    moduleUI.lustCustomDrumContent = CreateFrame(
+        "Frame", nil, moduleUI.lustCustomDrumScroll
+    )
+    moduleUI.lustCustomDrumContent:SetSize(320, 1)
+    moduleUI.lustCustomDrumScroll:SetScrollChild(
+        moduleUI.lustCustomDrumContent
+    )
     moduleUI.lustCustomDrumListText = Label(
-        moduleUI.lustDrumManager,
-        "None added.",
-        "GameFontHighlightSmall"
+        moduleUI.lustCustomDrumContent, "None added.", "GameFontHighlightSmall"
     )
     moduleUI.lustCustomDrumListText:SetPoint(
-        "TOPLEFT",
-        customDrumListTitle,
-        "BOTTOMLEFT",
-        0,
-        -8
+        "TOPLEFT", moduleUI.lustCustomDrumContent, "TOPLEFT", 4, -4
     )
-    moduleUI.lustCustomDrumListText:SetWidth(545)
+    moduleUI.lustCustomDrumListText:SetWidth(304)
     moduleUI.lustCustomDrumListText:SetJustifyH("LEFT")
-    SetFontColor(
-        moduleUI.lustCustomDrumListText,
-        THEME.subtext
-    )
+    moduleUI.lustCustomDrumListText:SetJustifyV("TOP")
+    SetFontColor(moduleUI.lustCustomDrumListText, THEME.subtext)
 
-    local closeDrums = CreateFrame(
-        "Button",
-        nil,
-        moduleUI.lustDrumManager,
-        "UIPanelButtonTemplate"
-    )
-    closeDrums:SetSize(96, 28)
-    closeDrums:SetPoint(
-        "BOTTOMRIGHT",
-        moduleUI.lustDrumManager,
-        "BOTTOMRIGHT",
-        -18,
-        16
-    )
-    closeDrums:SetText("Close")
-    closeDrums:SetScript("OnClick", function()
-        moduleUI.lustDrumManager:Hide()
+    moduleUI.RefreshLustCustomDrumListLayout = function()
+        local scroll = moduleUI.lustCustomDrumScroll
+        local content = moduleUI.lustCustomDrumContent
+        local list = moduleUI.lustCustomDrumListText
+        if not scroll or not content or not list then return end
+        local width = math.max(scroll:GetWidth() - 16, 1)
+        content:SetWidth(width)
+        list:SetWidth(math.max(width - 8, 1))
+        content:SetHeight(math.max(list:GetStringHeight() + 8, scroll:GetHeight()))
+        scroll:UpdateScrollChildRect()
+    end
+    moduleUI.lustCustomDrumScroll:SetScript("OnSizeChanged", function()
+        if moduleUI.RefreshLustCustomDrumListLayout then
+            moduleUI.RefreshLustCustomDrumListLayout()
+        end
     end)
-    SkinButton(closeDrums)
 end
 
 
@@ -7220,14 +7039,6 @@ local function BuildStatsPage()
         "",
         "GameFontDisableSmall"
     )
-    moduleStatus:SetPoint(
-        "TOPRIGHT",
-        moduleUI.statsPanel,
-        "TOPRIGHT",
-        -18,
-        -22
-    )
-    moduleStatus:SetJustifyH("RIGHT")
     moduleUI.statsPanel.moduleStatus = moduleStatus
 
     local desc = Label(
@@ -7242,36 +7053,89 @@ local function BuildStatsPage()
 
     moduleUI.statsPageEnabledCheck = Checkbox(
         moduleUI.statsPanel,
-        "Enable My Stats module",
+        "",
         18,
-        -68,
+        -24,
         function(value)
             if BW.SetStatsModuleEnabled then
                 BW:SetStatsModuleEnabled(value)
             end
+            if moduleUI.SetStandaloneModuleEnabled then
+                moduleUI.SetStandaloneModuleEnabled("stats", value, true)
+            end
         end
+    )
+    moduleUI.statsPageEnabledCheck:ClearAllPoints()
+    moduleUI.statsPageEnabledCheck:SetPoint(
+        "TOPRIGHT",
+        moduleUI.statsPanel,
+        "TOPRIGHT",
+        -24,
+        -22
+    )
+    moduleUI.statsPageEnabledCheck.Label:Hide()
+    moduleStatus:SetPoint("TOP", moduleUI.statsPageEnabledCheck, "BOTTOM", 0, -4)
+    moduleStatus:SetWidth(90)
+    moduleStatus:SetJustifyH("CENTER")
+
+    moduleUI.ApplyModuleHeader(
+        moduleUI.statsPanel, title, desc, moduleUI.statsPageEnabledCheck, moduleStatus,
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavStats.tga"
     )
 
     moduleUI.statsPage = CreateFrame("Frame", nil, moduleUI.statsPanel)
-    moduleUI.statsPage:SetPoint("TOPLEFT", moduleUI.statsPanel, "TOPLEFT", 0, -112)
+    moduleUI.statsPage:SetPoint("TOPLEFT", moduleUI.statsPanel, "TOPLEFT", 0, -96)
     moduleUI.statsPage:SetPoint("BOTTOMRIGHT", moduleUI.statsPanel, "BOTTOMRIGHT", 0, 0)
 
+    local displayTab = CreateFrame("Button", nil, moduleUI.statsPage, "UIPanelButtonTemplate")
+    displayTab:SetSize(132, 30)
+    displayTab:SetPoint("TOPLEFT", moduleUI.statsPage, "TOPLEFT", 14, -4)
+    displayTab:SetText("Display")
+    SkinButton(displayTab)
+
+    local visibilityTab = CreateFrame("Button", nil, moduleUI.statsPage, "UIPanelButtonTemplate")
+    visibilityTab:SetSize(144, 30)
+    visibilityTab:SetPoint("LEFT", displayTab, "RIGHT", 2, 0)
+    visibilityTab:SetText("Visibility")
+    SkinButton(visibilityTab)
+
+    local displayContent = CreateFrame("Frame", nil, moduleUI.statsPage)
+    displayContent:SetPoint("TOPLEFT", moduleUI.statsPage, "TOPLEFT", 0, -38)
+    displayContent:SetPoint("BOTTOMRIGHT", moduleUI.statsPage, "BOTTOMRIGHT", 0, 0)
+
+    local visibilityContent = CreateFrame("Frame", nil, moduleUI.statsPage)
+    visibilityContent:SetPoint("TOPLEFT", moduleUI.statsPage, "TOPLEFT", 0, -38)
+    visibilityContent:SetPoint("BOTTOMRIGHT", moduleUI.statsPage, "BOTTOMRIGHT", 0, 0)
+    visibilityContent:Hide()
+
+    local function SelectStatsTab(tab)
+        local showDisplay = tab == "display"
+        displayContent:SetShown(showDisplay)
+        visibilityContent:SetShown(not showDisplay)
+        SetButtonActiveState(displayTab, showDisplay)
+        SetButtonActiveState(visibilityTab, not showDisplay)
+    end
+
+    displayTab:SetScript("OnClick", function() SelectStatsTab("display") end)
+    visibilityTab:SetScript("OnClick", function() SelectStatsTab("visibility") end)
+    SelectStatsTab("display")
+
     local displayCard = CreateSection(
-        moduleUI.statsPage,
+        displayContent,
         14,
         -8,
         394,
-        372,
+        252,
         "Display",
-        "Move, align, size, and control when the stat panel is visible."
+        ""
     )
 
     moduleUI.statsFontSizeSlider = Slider(
         displayCard,
         "Font size",
-        18,
-        -78,
-        176,
+        150,
+        -42,
+        160,
         10,
         28,
         1,
@@ -7283,37 +7147,41 @@ local function BuildStatsPage()
             BW:ApplyStatsSettings()
         end
     )
+    moduleUI.statsFontSizeSlider.Text:Hide()
+    moduleUI.statsFontSizeSlider.Low:Hide()
+    moduleUI.statsFontSizeSlider.High:Hide()
+    moduleUI.statsFontSizeLabel = Label(displayCard, "Font size", "GameFontHighlight")
+    moduleUI.statsFontSizeLabel:SetPoint("LEFT", moduleUI.statsFontSizeSlider, "LEFT", -132, 0)
+    SetFontColor(moduleUI.statsFontSizeLabel, THEME.text)
 
-    moduleUI.statsOrientationButton = SortCycleButton(
+    moduleUI.statsOrientationButton = moduleUI.CreateChoiceDropdown(
         displayCard,
-        "Orientation",
-        18,
-        -124,
-        152,
-        DISPLAY_ORIENTATION_ORDER,
-        DISPLAY_ORIENTATION_LABELS,
+        150,
+        -70,
+        224,
+        {
+            { key = "horizontal", label = "Horizontal" },
+            { key = "vertical", label = "Vertical" },
+        },
         function(value)
             BW.db.statsOrientation = value
             BW:ApplyStatsSettings()
             BW:RefreshStatsOptions()
         end
     )
+    moduleUI.statsOrientationLabel = Label(displayCard, "Orientation", "GameFontHighlight")
+    moduleUI.statsOrientationLabel:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -74)
+    SetFontColor(moduleUI.statsOrientationLabel, THEME.text)
 
-    moduleUI.statsAlignButton = SortCycleButton(
+    moduleUI.statsAlignButton = moduleUI.CreateChoiceDropdown(
         displayCard,
-        "Text alignment",
-        18,
-        -160,
-        152,
+        150,
+        -104,
+        224,
         {
-            "left",
-            "center",
-            "right",
-        },
-        {
-            left = "Left",
-            center = "Center",
-            right = "Right",
+            { key = "left", label = "Left" },
+            { key = "center", label = "Center" },
+            { key = "right", label = "Right" },
         },
         function(value)
             BW.db.statsTextAlign = value
@@ -7326,72 +7194,54 @@ local function BuildStatsPage()
             BW:RefreshStatsOptions()
         end
     )
+    moduleUI.statsVerticalAlignButton = moduleUI.CreateChoiceDropdown(
+        displayCard,
+        150,
+        -104,
+        224,
+        {
+            { key = "top", label = "Top" },
+            { key = "middle", label = "Middle" },
+        },
+        function(value)
+            BW.db.statsVerticalAlign = value
+            if BW.UpdateStatsDisplay then BW:UpdateStatsDisplay() end
+            BW:ApplyStatsSettings()
+            BW:RefreshStatsOptions()
+        end
+    )
+    moduleUI.statsAlignLabel = Label(displayCard, "Text alignment", "GameFontHighlight")
+    moduleUI.statsAlignLabel:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -108)
+    SetFontColor(moduleUI.statsAlignLabel, THEME.text)
+    moduleUI.statsVerticalAlignButton:Hide()
 
     moduleUI.statsUnlockCheck = Checkbox(
         displayCard,
-        "Unlock display to drag",
-        14,
-        -198,
+        "Unlock to move",
+        336,
+        -172,
         function(value)
             BW:SetStatsUnlocked(value)
-        end
-    )
-
-    moduleUI.statsOnlyInCombatCheck = Checkbox(
-        displayCard,
-        "Only show in combat",
-        14,
-        -232,
-        function(value)
-            BW.db.statsOnlyInCombat = value
-
-            if value then
-                BW.db.statsOnlyOutOfCombat = false
-            end
-
-            BW:ApplyStatsSettings()
-            BW:RefreshStatsOptions()
-        end
-    )
-
-    moduleUI.statsOnlyOutOfCombatCheck = Checkbox(
-        displayCard,
-        "Only show out of combat",
-        194,
-        -232,
-        function(value)
-            BW.db.statsOnlyOutOfCombat = value
-
-            if value then
-                BW.db.statsOnlyInCombat = false
-            end
-
-            BW:ApplyStatsSettings()
-            BW:RefreshStatsOptions()
-        end
-    )
-
-    moduleUI.statsOnlyInInstanceCheck = Checkbox(
-        displayCard,
-        "Only show in instances",
-        14,
-        -266,
-        function(value)
-            BW.db.statsOnlyInInstance = value
-            BW:ApplyStatsSettings()
         end
     )
 
     moduleUI.statsShowBackgroundCheck = Checkbox(
         displayCard,
         "Show background",
-        194,
-        -266,
+        336,
+        -140,
         function(value)
             BW.db.statsShowBackground = value
             BW:ApplyStatsSettings()
         end
     )
+
+    moduleUI.statsShowBackgroundCheck.Label:ClearAllPoints()
+    moduleUI.statsShowBackgroundCheck.Label:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -144)
+    moduleUI.statsShowBackgroundCheck.Label:SetJustifyH("LEFT")
+    moduleUI.statsUnlockCheck.Label:ClearAllPoints()
+    moduleUI.statsUnlockCheck.Label:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -176)
+    moduleUI.statsUnlockCheck.Label:SetJustifyH("LEFT")
 
     local reset = CreateFrame(
         "Button",
@@ -7400,13 +7250,7 @@ local function BuildStatsPage()
         "UIPanelButtonTemplate"
     )
     reset:SetSize(124, 28)
-    reset:SetPoint(
-        "TOPLEFT",
-        displayCard,
-        "TOPLEFT",
-        18,
-        -312
-    )
+    reset:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -208)
     reset:SetText("Reset position")
     reset:SetScript("OnClick", function()
         BW:ResetStatsPosition()
@@ -7414,20 +7258,80 @@ local function BuildStatsPage()
     SkinButton(reset)
 
     local statsCard = CreateSection(
-        moduleUI.statsPage,
+        displayContent,
         424,
         -8,
         394,
-        372,
+        252,
         "Stats",
-        "Choose which secondary stats to show and set a separate color for each."
+        ""
     )
+
+    local visibilityCard = CreateSection(
+        visibilityContent,
+        14,
+        -8,
+        340,
+        150,
+        "Visibility",
+        ""
+    )
+
+    moduleUI.statsOnlyInCombatCheck = Checkbox(
+        visibilityCard,
+        "Only show in combat",
+        18,
+        -50,
+        function(value)
+            BW.db.statsOnlyInCombat = value
+            if value then BW.db.statsOnlyOutOfCombat = false end
+            BW:ApplyStatsSettings()
+            BW:RefreshStatsOptions()
+        end
+    )
+
+    moduleUI.statsOnlyOutOfCombatCheck = Checkbox(
+        visibilityCard,
+        "Only show out of combat",
+        18,
+        -82,
+        function(value)
+            BW.db.statsOnlyOutOfCombat = value
+            if value then BW.db.statsOnlyInCombat = false end
+            BW:ApplyStatsSettings()
+            BW:RefreshStatsOptions()
+        end
+    )
+
+    moduleUI.statsOnlyInInstanceCheck = Checkbox(
+        visibilityCard,
+        "Only show in instances",
+        18,
+        -114,
+        function(value)
+            BW.db.statsOnlyInInstance = value
+            BW:ApplyStatsSettings()
+        end
+    )
+
+    local function AlignVisibilityToggle(check, y)
+        check:ClearAllPoints()
+        check:SetPoint("TOPRIGHT", visibilityCard, "TOPRIGHT", -18, y)
+        check.Label:ClearAllPoints()
+        check.Label:SetPoint("LEFT", visibilityCard, "TOPLEFT", 18, y - 11)
+        check.Label:SetPoint("RIGHT", check, "LEFT", -12, 0)
+        check.Label:SetJustifyH("LEFT")
+    end
+
+    AlignVisibilityToggle(moduleUI.statsOnlyInCombatCheck, -50)
+    AlignVisibilityToggle(moduleUI.statsOnlyOutOfCombatCheck, -82)
+    AlignVisibilityToggle(moduleUI.statsOnlyInInstanceCheck, -114)
 
     moduleUI.statsShowCritCheck = Checkbox(
         statsCard,
         "Critical Strike",
         14,
-        -72,
+        -52,
         function(value)
             BW.db.statsShowCrit = value
             BW:ApplyStatsSettings()
@@ -7439,7 +7343,7 @@ local function BuildStatsPage()
         statsCard,
         "Haste",
         14,
-        -108,
+        -88,
         function(value)
             BW.db.statsShowHaste = value
             BW:ApplyStatsSettings()
@@ -7451,7 +7355,7 @@ local function BuildStatsPage()
         statsCard,
         "Mastery",
         14,
-        -144,
+        -124,
         function(value)
             BW.db.statsShowMastery = value
             BW:ApplyStatsSettings()
@@ -7463,7 +7367,7 @@ local function BuildStatsPage()
         statsCard,
         "Versatility",
         14,
-        -180,
+        -160,
         function(value)
             BW.db.statsShowVersatility = value
             BW:ApplyStatsSettings()
@@ -7471,11 +7375,25 @@ local function BuildStatsPage()
         end
     )
 
+    local function AlignStatToggle(check, y)
+        check:ClearAllPoints()
+        check:SetPoint("TOPLEFT", statsCard, "TOPLEFT", 282, y)
+        check.Label:ClearAllPoints()
+        check.Label:SetPoint("LEFT", statsCard, "TOPLEFT", 14, y - 11)
+        check.Label:SetPoint("RIGHT", check, "LEFT", -12, 0)
+        check.Label:SetJustifyH("LEFT")
+    end
+
+    AlignStatToggle(moduleUI.statsShowCritCheck, -52)
+    AlignStatToggle(moduleUI.statsShowHasteCheck, -88)
+    AlignStatToggle(moduleUI.statsShowMasteryCheck, -124)
+    AlignStatToggle(moduleUI.statsShowVersatilityCheck, -160)
+
     moduleUI.statsCritColorButton = ColorButton(
         statsCard,
-        "Color",
-        214,
-        -72,
+        nil,
+        336,
+        -52,
         function(color)
             BW.db.statsCritColor = color
             BW:ApplyStatsSettings()
@@ -7485,9 +7403,9 @@ local function BuildStatsPage()
 
     moduleUI.statsHasteColorButton = ColorButton(
         statsCard,
-        "Color",
-        214,
-        -108,
+        nil,
+        336,
+        -88,
         function(color)
             BW.db.statsHasteColor = color
             BW:ApplyStatsSettings()
@@ -7497,9 +7415,9 @@ local function BuildStatsPage()
 
     moduleUI.statsMasteryColorButton = ColorButton(
         statsCard,
-        "Color",
-        214,
-        -144,
+        nil,
+        336,
+        -124,
         function(color)
             BW.db.statsMasteryColor = color
             BW:ApplyStatsSettings()
@@ -7509,9 +7427,9 @@ local function BuildStatsPage()
 
     moduleUI.statsVersatilityColorButton = ColorButton(
         statsCard,
-        "Color",
-        214,
-        -180,
+        nil,
+        336,
+        -160,
         function(color)
             BW.db.statsVersatilityColor = color
             BW:ApplyStatsSettings()
@@ -7530,8 +7448,8 @@ local function BuildStatsPage()
         "TOPLEFT",
         statsCard,
         "TOPLEFT",
-        214,
-        -216
+        250,
+        -198
     )
     resetColors:SetText("Reset colors")
     resetColors:SetScript("OnClick", function()
@@ -7544,33 +7462,28 @@ local function BuildStatsPage()
     end)
     SkinButton(resetColors)
 
-    local previewLabel = Label(
-        statsCard,
+    local previewCard = CreateSection(
+        displayContent,
+        14,
+        -270,
+        804,
+        160,
         "Live preview",
-        "GameFontHighlight"
+        ""
     )
-    previewLabel:SetPoint(
-        "TOPLEFT",
-        statsCard,
-        "TOPLEFT",
-        18,
-        -258
-    )
-    SetFontColor(previewLabel, THEME.subtext)
+
+    local previewBox = CreateFrame("Frame", nil, previewCard, "BackdropTemplate")
+    previewBox:SetPoint("TOPLEFT", previewCard, "TOPLEFT", 18, -54)
+    previewBox:SetPoint("BOTTOMRIGHT", previewCard, "BOTTOMRIGHT", -18, 14)
+    ApplyBackdrop(previewBox, THEME.panelAlt, THEME.border, THEME.flatSectionBackdrop)
 
     moduleUI.statsPreviewText = Label(
-        statsCard,
+        previewBox,
         "",
         "GameFontNormal"
     )
-    moduleUI.statsPreviewText:SetPoint(
-        "TOPLEFT",
-        previewLabel,
-        "BOTTOMLEFT",
-        0,
-        -10
-    )
-    moduleUI.statsPreviewText:SetWidth(350)
+    moduleUI.statsPreviewText:SetPoint("TOPLEFT", previewBox, "TOPLEFT", 8, -8)
+    moduleUI.statsPreviewText:SetPoint("BOTTOMRIGHT", previewBox, "BOTTOMRIGHT", -8, 8)
     moduleUI.statsPreviewText:SetJustifyH("CENTER")
     SetFontColor(moduleUI.statsPreviewText, THEME.accent)
 end
@@ -7611,7 +7524,6 @@ local function BuildSurvivalPage()
     desc:SetWidth(760)
     desc:SetJustifyH("LEFT")
     SetFontColor(desc, THEME.subtext)
-
     moduleUI.survivalPageEnabledCheck = Checkbox(
         moduleUI.survivalPanel,
         "Enable Survival Helper module",
@@ -7623,17 +7535,112 @@ local function BuildSurvivalPage()
             end
         end
     )
+    moduleUI.ApplyModuleHeader(
+        moduleUI.survivalPanel, title, desc, moduleUI.survivalPageEnabledCheck, moduleStatus,
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavSurvival.tga"
+    )
 
     moduleUI.survivalPage = CreateFrame("Frame", nil, moduleUI.survivalPanel)
-    moduleUI.survivalPage:SetPoint("TOPLEFT", moduleUI.survivalPanel, "TOPLEFT", 0, -112)
+    moduleUI.survivalPage:SetPoint("TOPLEFT", moduleUI.survivalPanel, "TOPLEFT", 0, -96)
     moduleUI.survivalPage:SetPoint("BOTTOMRIGHT", moduleUI.survivalPanel, "BOTTOMRIGHT", 0, 0)
 
+    moduleUI.survivalTabs = {}
+    moduleUI.survivalTabPages = {}
+    local survivalTabNames = {
+        { key = "priority", label = "Priority & Trigger", width = 178 },
+        { key = "alerts", label = "Alerts", width = 126 },
+        { key = "appearance", label = "Appearance", width = 150 },
+    }
+    local previousSurvivalTab
+    for index, tabInfo in ipairs(survivalTabNames) do
+        local tabKey = tabInfo.key
+        local tab = CreateFrame("Button", nil, moduleUI.survivalPage, "UIPanelButtonTemplate")
+        tab:SetSize(tabInfo.width, 30)
+        if not previousSurvivalTab then
+            tab:SetPoint("TOPLEFT", moduleUI.survivalPage, "TOPLEFT", 14, -4)
+        else
+            tab:SetPoint("LEFT", previousSurvivalTab, "RIGHT", 4, 0)
+        end
+        tab:SetText(tabInfo.label)
+        SkinButton(tab)
+        moduleUI.survivalTabs[tabKey] = tab
+        previousSurvivalTab = tab
+
+        local page = CreateFrame("Frame", nil, moduleUI.survivalPage)
+        page:SetPoint("TOPLEFT", moduleUI.survivalPage, "TOPLEFT", 0, -38)
+        page:SetPoint("BOTTOMRIGHT", moduleUI.survivalPage, "BOTTOMRIGHT", 0, 0)
+        moduleUI.survivalTabPages[tabInfo.key] = page
+        tab:SetScript("OnClick", function()
+            moduleUI.survivalCurrentTab = tabKey
+            for key, tabPage in pairs(moduleUI.survivalTabPages) do
+                tabPage:SetShown(key == tabKey)
+                SetButtonActiveState(moduleUI.survivalTabs[key], key == tabKey)
+            end
+        end)
+    end
+    moduleUI.survivalCurrentTab = moduleUI.survivalCurrentTab or "priority"
+    for key, tabPage in pairs(moduleUI.survivalTabPages) do
+        local selected = key == moduleUI.survivalCurrentTab
+        tabPage:SetShown(selected)
+        SetButtonActiveState(moduleUI.survivalTabs[key], selected)
+    end
+
+    local priorityPage = moduleUI.survivalTabPages.priority
+    local alertsPage = moduleUI.survivalTabPages.alerts
+    local appearancePage = moduleUI.survivalTabPages.appearance
+
+    local triggerCard = CreateSection(
+        priorityPage, 424, -8, 394, 218, "Trigger conditions", "Show the first ready action at or below this health threshold."
+    )
+    local addCard = CreateSection(
+        priorityPage, 424, -236, 394, 174, "Add spell or item",
+        "Enter an ID or paste a spell/item link."
+    )
+    local alertCard = CreateSection(
+        alertsPage, 14, -8, 394, 270, "Voice alerts", "Configure spoken warnings and their text."
+    )
+    local soundCard = CreateSection(
+        alertsPage, 424, -8, 394, 270, "Sound alert", "Choose a sound to play when the HP trigger fires."
+    )
+    local appearanceCard = CreateSection(
+        appearancePage, 14, -8, 394, 336, "On-screen display", "Adjust how the survival icon appears."
+    )
+    local appearancePreviewCard = CreateSection(
+        appearancePage, 424, -8, 394, 336, "Preview", "The first configured action appears here."
+    )
+
+    local function AlignSurvivalToggle(check, parent, y)
+        check:ClearAllPoints()
+        check:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -18, y)
+        if check.Label then
+            check.Label:ClearAllPoints()
+            check.Label:SetPoint("TOPLEFT", parent, "TOPLEFT", 18, y - 1)
+            check.Label:SetWidth(math.max(120, parent:GetWidth() - 100))
+            check.Label:SetJustifyH("LEFT")
+            check.Label:SetJustifyV("MIDDLE")
+        end
+    end
+
+    moduleUI.survivalAppearanceIcons = {}
+    moduleUI.survivalAppearanceIcons[1] = appearancePreviewCard:CreateTexture(nil, "ARTWORK")
+    moduleUI.survivalAppearanceIcons[1]:SetSize(58, 58)
+    moduleUI.survivalAppearanceIcons[1]:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    moduleUI.survivalAppearanceIcons[1]:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    moduleUI.survivalAppearanceIcons[1]:SetPoint("CENTER", appearancePreviewCard, "CENTER", 0, 14)
+    moduleUI.survivalAppearanceLabel = Label(appearancePreviewCard, "Action icon preview", "GameFontHighlight")
+    moduleUI.survivalAppearanceLabel:SetPoint("TOP", moduleUI.survivalAppearanceIcons[1], "BOTTOM", 0, -8)
+    moduleUI.survivalAppearanceLabel:SetJustifyH("CENTER")
+    SetFontColor(moduleUI.survivalAppearanceLabel, THEME.subtext)
+    moduleUI.survivalAppearanceGlowHost = CreateFrame("Frame", nil, appearancePreviewCard)
+    moduleUI.survivalAppearanceGlowHost:SetSize(58, 58)
+    moduleUI.survivalAppearanceGlowHost:SetFrameLevel(appearancePreviewCard:GetFrameLevel() + 3)
+
     local recommendationCard = CreateSection(
-        moduleUI.survivalPage,
+        priorityPage,
         14,
         -8,
         394,
-        500,
+        460,
         "Priority list",
         "Cooldown, unknown, or missing actions are skipped. Edit each TTS phrase below; it saves per character."
     )
@@ -7647,7 +7654,8 @@ local function BuildSurvivalPage()
         "UIPanelScrollFrameTemplate"
     )
     actionScroll:SetPoint("TOPLEFT", recommendationCard, "TOPLEFT", 14, -72)
-    actionScroll:SetPoint("BOTTOMRIGHT", recommendationCard, "BOTTOMRIGHT", -34, 104)
+    actionScroll:SetPoint("BOTTOMRIGHT", recommendationCard, "BOTTOMRIGHT", -34, 22)
+    moduleUI.SkinScrollFrame(actionScroll)
 
     local actionScrollChild = CreateFrame("Frame", nil, actionScroll)
     actionScrollChild:SetSize(338, 1)
@@ -7658,32 +7666,21 @@ local function BuildSurvivalPage()
         local row = moduleUI.survivalActionRows[index]
         if row then return row end
 
-        row = CreateFrame("Frame", nil, actionScrollChild)
-        row:SetSize(332, 58)
+        row = CreateFrame("Frame", nil, actionScrollChild, "BackdropTemplate")
+        row:SetSize(338, 88)
+        ApplyBackdrop(row, THEME.section, THEME.border, THEME.flatSectionBackdrop)
         row:SetPoint(
             "TOPLEFT",
             actionScrollChild,
             "TOPLEFT",
             0,
-            -((index - 1) * 60)
-        )
-
-        local divider = row:CreateTexture(nil, "BACKGROUND")
-        divider:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
-        divider:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-        divider:SetHeight(1)
-        divider:SetColorTexture(
-            THEME.border[1],
-            THEME.border[2],
-            THEME.border[3],
-            0.55
+            -((index - 1) * 92)
         )
 
         row.enabled = Checkbox(
             row,
             "",
-            0,
-            -2,
+            0, -2,
             function(value)
                 if row.actionKey and BW.SetSurvivalActionEnabled then
                     BW:SetSurvivalActionEnabled(row.actionKey, value)
@@ -7692,10 +7689,23 @@ local function BuildSurvivalPage()
             end
         )
         if row.enabled.Label then row.enabled.Label:Hide() end
+        row.enabled:ClearAllPoints()
+        row.enabled:SetPoint("TOPRIGHT", row, "TOPRIGHT", -8, -8)
+
+        row.orderText = Label(row, "", "GameFontNormalLarge")
+        row.orderText:SetPoint("TOPLEFT", row, "TOPLEFT", 66, -10)
+        row.orderText:SetSize(22, 24)
+        row.orderText:SetJustifyH("CENTER")
+        SetFontColor(row.orderText, THEME.text)
+
+        row.icon = row:CreateTexture(nil, "ARTWORK")
+        row.icon:SetSize(36, 36)
+        row.icon:SetPoint("TOPLEFT", row, "TOPLEFT", 94, -8)
 
         row.linkButton = CreateFrame("Button", nil, row)
-        row.linkButton:SetSize(190, 22)
-        row.linkButton:SetPoint("TOPLEFT", row, "TOPLEFT", 34, -2)
+        row.linkButton:SetSize(150, 22)
+        row.linkButton:SetPoint("TOPLEFT", row, "TOPLEFT", 138, -9)
+        row.linkButton._khNoSkin = true
 
         row.linkText = row.linkButton:CreateFontString(
             nil,
@@ -7719,51 +7729,55 @@ local function BuildSurvivalPage()
             "OVERLAY",
             "GameFontDisableSmall"
         )
-        row.status:SetPoint("TOPRIGHT", row, "TOPRIGHT", -4, -7)
-        row.status:SetWidth(102)
-        row.status:SetJustifyH("RIGHT")
+        row.status:SetPoint("TOPLEFT", row, "TOPLEFT", 138, -33)
+        row.status:SetWidth(150)
+        row.status:SetJustifyH("LEFT")
 
-        row.up = CreateFrame(
-            "Button",
-            nil,
-            row,
-            "UIPanelButtonTemplate"
-        )
-        row.up:SetSize(48, 24)
-        row.up:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 34, 5)
-        row.up:SetText("Up")
+        row.up = CreateFrame("Button", nil, row, "BackdropTemplate")
+        row.up:SetSize(26, 26)
+        row.up:SetPoint("TOPLEFT", row, "TOPLEFT", 8, -8)
+        ApplyBackdrop(row.up, THEME.button, THEME.border, THEME.flatControlBackdrop)
+        row.up.icon = row.up:CreateTexture(nil, "ARTWORK")
+        row.up.icon:SetSize(16, 16)
+        row.up.icon:SetPoint("CENTER")
+        row.up.icon:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\ScrollArrowUp.tga")
         row.up:SetScript("OnClick", function()
             if row.actionKey and BW.MoveSurvivalAction then
                 BW:MoveSurvivalAction(row.actionKey, "up")
                 BW:RefreshSurvivalOptions()
             end
         end)
-        SkinButton(row.up)
+        row.up:SetScript("OnEnter", function(self) self:SetBackdropColor(THEME.buttonHover[1], THEME.buttonHover[2], THEME.buttonHover[3], 1) end)
+        row.up:SetScript("OnLeave", function(self) self:SetBackdropColor(THEME.button[1], THEME.button[2], THEME.button[3], 1) end)
+        row.up:HookScript("OnDisable", function(self) self:SetAlpha(0.42) end)
+        row.up:HookScript("OnEnable", function(self) self:SetAlpha(1) end)
 
-        row.down = CreateFrame(
-            "Button",
-            nil,
-            row,
-            "UIPanelButtonTemplate"
-        )
-        row.down:SetSize(48, 24)
-        row.down:SetPoint("LEFT", row.up, "RIGHT", 5, 0)
-        row.down:SetText("Down")
+        row.down = CreateFrame("Button", nil, row, "BackdropTemplate")
+        row.down:SetSize(26, 26)
+        row.down:SetPoint("TOPLEFT", row, "TOPLEFT", 38, -8)
+        ApplyBackdrop(row.down, THEME.button, THEME.border, THEME.flatControlBackdrop)
+        row.down.icon = row.down:CreateTexture(nil, "ARTWORK")
+        row.down.icon:SetSize(16, 16)
+        row.down.icon:SetPoint("CENTER")
+        row.down.icon:SetTexture("Interface\\AddOns\\KayliiHelper\\Media\\ScrollArrowDown.tga")
         row.down:SetScript("OnClick", function()
             if row.actionKey and BW.MoveSurvivalAction then
                 BW:MoveSurvivalAction(row.actionKey, "down")
                 BW:RefreshSurvivalOptions()
             end
         end)
-        SkinButton(row.down)
+        row.down:SetScript("OnEnter", function(self) self:SetBackdropColor(THEME.buttonHover[1], THEME.buttonHover[2], THEME.buttonHover[3], 1) end)
+        row.down:SetScript("OnLeave", function(self) self:SetBackdropColor(THEME.button[1], THEME.button[2], THEME.button[3], 1) end)
+        row.down:HookScript("OnDisable", function(self) self:SetAlpha(0.42) end)
+        row.down:HookScript("OnEnable", function(self) self:SetAlpha(1) end)
 
         row.ttsLabel = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        row.ttsLabel:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 140, 10)
+        row.ttsLabel:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -61)
         row.ttsLabel:SetText("TTS")
         row.ttsLabel:SetTextColor(THEME.subtext[1], THEME.subtext[2], THEME.subtext[3], 1)
 
-        row.ttsPhraseBox = CreateVisibleValueBox(row, 132)
-        row.ttsPhraseBox:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 162, 5)
+        row.ttsPhraseBox = CreateVisibleValueBox(row, 244)
+        row.ttsPhraseBox:SetPoint("TOPLEFT", row, "TOPLEFT", 42, -56)
         row.ttsPhraseBox:SetJustifyH("LEFT")
         row.ttsPhraseBox:SetTextInsets(5, 5, 0, 0)
         row.ttsPhraseBox:SetMaxLetters(96)
@@ -7799,9 +7813,9 @@ local function BuildSurvivalPage()
             row,
             "UIPanelButtonTemplate"
         )
-        row.remove:SetSize(30, 24)
-        row.remove:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -2, 5)
-        row.remove:SetText("X")
+        row.remove:SetSize(28, 24)
+        row.remove:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -8, 5)
+        row.remove:SetText("×")
         row.remove:SetScript("OnClick", function()
             if row.actionKey and BW.RemoveSurvivalAction then
                 BW:RemoveSurvivalAction(row.actionKey)
@@ -7814,8 +7828,92 @@ local function BuildSurvivalPage()
         return row
     end
 
+    local function UpdateSurvivalAppearancePreview(actions)
+        local readyActions = {}
+        for _, action in ipairs(actions) do
+            if action.enabled and action.available and action.ready then
+                readyActions[#readyActions + 1] = action
+                if not BW.db.survivalShowAllReadyActions then break end
+            end
+        end
+
+        local hasReadyAction = #readyActions > 0
+        if not hasReadyAction then
+            readyActions[1] = {
+                name = "No action ready",
+                icon = "Interface\\Icons\\INV_Misc_QuestionMark",
+            }
+        end
+
+        local iconSize = math.max(32, math.min(100, tonumber(BW.db.survivalIconSize) or 58))
+        local spacing = iconSize + 4
+        local growth = tostring(BW.db.survivalReadyActionsGrowth or "right")
+        if growth ~= "left" and growth ~= "right" and growth ~= "up" and growth ~= "down" then
+            growth = "right"
+        end
+        local count = #readyActions
+        local middleOffset = ((count - 1) * spacing) / 2
+        local baseX = growth == "left" and middleOffset or 0
+        local baseY = growth == "up" and (14 - middleOffset)
+            or growth == "down" and (14 + middleOffset)
+            or 14
+
+        for index, action in ipairs(readyActions) do
+            local icon = moduleUI.survivalAppearanceIcons[index]
+            if not icon then
+                icon = appearancePreviewCard:CreateTexture(nil, "ARTWORK")
+                icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+                moduleUI.survivalAppearanceIcons[index] = icon
+            end
+            icon:SetSize(iconSize, iconSize)
+            icon:SetTexture(action.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            icon:ClearAllPoints()
+            local offset = (index - 1) * spacing
+            local x = growth == "right" and offset or growth == "left" and -offset or 0
+            local y = growth == "up" and offset or growth == "down" and -offset or 0
+            icon:SetPoint("CENTER", appearancePreviewCard, "CENTER", baseX + x, baseY + y)
+            icon:Show()
+        end
+        for index = count + 1, #moduleUI.survivalAppearanceIcons do
+            moduleUI.survivalAppearanceIcons[index]:Hide()
+        end
+
+        local firstIcon = moduleUI.survivalAppearanceIcons[1]
+        moduleUI.survivalAppearanceLabel:ClearAllPoints()
+        moduleUI.survivalAppearanceLabel:SetPoint("TOP", firstIcon, "BOTTOM", 0, -8)
+        moduleUI.survivalAppearanceLabel:SetText(readyActions[1].name or "Action")
+        moduleUI.survivalAppearanceLabel:SetShown(
+            BW.db.survivalShowLabel ~= false or not hasReadyAction
+        )
+
+        local glowHost = moduleUI.survivalAppearanceGlowHost
+        glowHost:ClearAllPoints()
+        glowHost:SetPoint("CENTER", firstIcon, "CENTER", 0, 0)
+        glowHost:SetSize(iconSize, iconSize)
+        local manager = ActionButtonSpellAlertManager
+        local shouldGlow = hasReadyAction and BW.db.survivalGlowEnabled ~= false and manager
+        local sizeChanged = glowHost.survivalPreviewGlowSize ~= iconSize
+        if glowHost.survivalGlowShown and manager and manager.HideAlert
+            and (not shouldGlow or sizeChanged) then
+            pcall(manager.HideAlert, manager, glowHost)
+            glowHost.survivalGlowShown = false
+        end
+        if shouldGlow and manager.ShowAlert and not glowHost.survivalGlowShown then
+            local ok = pcall(manager.ShowAlert, manager, glowHost, false)
+            glowHost.survivalGlowShown = ok and true or false
+            local alert = glowHost.SpellActivationAlert
+            if ok and alert then
+                alert:SetSize(iconSize * 1.4, iconSize * 1.4)
+                alert:ClearAllPoints()
+                alert:SetPoint("CENTER", glowHost, "CENTER", 0, 0)
+            end
+        end
+        glowHost.survivalPreviewGlowSize = iconSize
+    end
+
     moduleUI.refreshSurvivalActionRows = function()
         local actions = BW.GetSurvivalActions and BW:GetSurvivalActions() or {}
+        UpdateSurvivalAppearancePreview(actions)
 
         for index, action in ipairs(actions) do
             local row = EnsureActionRow(index)
@@ -7824,9 +7922,9 @@ local function BuildSurvivalPage()
             row.actionID = action.id
             row.actionName = action.name or ""
             row.enabled:SetChecked(action.enabled and true or false)
-            row.linkText:SetText(
-                tostring(index) .. ". " .. (action.link or action.name or "Unknown action")
-            )
+            row.orderText:SetText(tostring(index))
+            row.icon:SetTexture(action.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+            row.linkText:SetText(action.name or "Unknown action")
             local phrase = BW.GetSurvivalTTSPhrase
                 and BW:GetSurvivalTTSPhrase(action.key, "Use " .. tostring(action.name or "action"))
                 or ("Use " .. tostring(action.name or "action"))
@@ -7844,39 +7942,41 @@ local function BuildSurvivalPage()
             moduleUI.survivalActionRows[index]:Hide()
         end
 
-        actionScrollChild:SetHeight(math.max(248, #actions * 60))
+        actionScrollChild:SetHeight(math.max(276, #actions * 92))
     end
 
-    local addLabel = Label(
-        recommendationCard,
-        "Add future spell/item by ID or pasted link:",
-        "GameFontHighlightSmall"
+    moduleUI.survivalAddActionTypeDropdown = moduleUI.CreateChoiceDropdown(
+        addCard,
+        18,
+        -64,
+        144,
+        {
+            { key = "spell", label = "Spell" },
+            { key = "item", label = "Item" },
+        },
+        function(value)
+            moduleUI.survivalAddActionType = value
+        end
     )
-    addLabel:SetPoint("BOTTOMLEFT", recommendationCard, "BOTTOMLEFT", 16, 70)
-    SetFontColor(addLabel, THEME.subtext)
+    moduleUI.survivalAddActionTypeDropdown:SetValue(moduleUI.survivalAddActionType or "spell")
 
     moduleUI.survivalAddActionBox = CreateFrame(
         "EditBox",
         nil,
-        recommendationCard,
+        addCard,
         "InputBoxTemplate"
     )
-    moduleUI.survivalAddActionBox:SetSize(112, 26)
+    moduleUI.survivalAddActionBox:SetSize(260, 28)
     moduleUI.survivalAddActionBox:SetAutoFocus(false)
-    moduleUI.survivalAddActionBox:SetPoint(
-        "BOTTOMLEFT",
-        recommendationCard,
-        "BOTTOMLEFT",
-        16,
-        34
-    )
+    moduleUI.survivalAddActionBox:SetPoint("TOPLEFT", addCard, "TOPLEFT", 18, -100)
+    moduleUI.survivalAddActionBox:SetMaxLetters(64)
     SkinEditBox(moduleUI.survivalAddActionBox)
 
-    local function AddSurvivalAction(actionType)
+    local function AddSurvivalAction()
         if not BW.AddSurvivalAction then return end
 
         local ok, message = BW:AddSurvivalAction(
-            actionType,
+            moduleUI.survivalAddActionTypeDropdown:GetValue() or "spell",
             moduleUI.survivalAddActionBox:GetText()
         )
 
@@ -7893,77 +7993,41 @@ local function BuildSurvivalPage()
         BW:RefreshSurvivalOptions()
     end
 
-    moduleUI.survivalAddSpellButton = CreateFrame(
+    moduleUI.survivalAddButton = CreateFrame(
         "Button",
         nil,
-        recommendationCard,
+        addCard,
         "UIPanelButtonTemplate"
     )
-    moduleUI.survivalAddSpellButton:SetSize(96, 26)
-    moduleUI.survivalAddSpellButton:SetPoint(
-        "LEFT",
-        moduleUI.survivalAddActionBox,
-        "RIGHT",
-        8,
-        0
-    )
-    moduleUI.survivalAddSpellButton:SetText("Add Spell")
-    moduleUI.survivalAddSpellButton:SetScript("OnClick", function()
-        AddSurvivalAction("spell")
+    moduleUI.survivalAddButton:SetSize(88, 28)
+    moduleUI.survivalAddButton:SetPoint("LEFT", moduleUI.survivalAddActionBox, "RIGHT", 8, 0)
+    moduleUI.survivalAddButton:SetText("Add")
+    moduleUI.survivalAddButton:SetScript("OnClick", function()
+        AddSurvivalAction()
     end)
-    SkinButton(moduleUI.survivalAddSpellButton)
-
-    moduleUI.survivalAddItemButton = CreateFrame(
-        "Button",
-        nil,
-        recommendationCard,
-        "UIPanelButtonTemplate"
-    )
-    moduleUI.survivalAddItemButton:SetSize(96, 26)
-    moduleUI.survivalAddItemButton:SetPoint(
-        "LEFT",
-        moduleUI.survivalAddSpellButton,
-        "RIGHT",
-        6,
-        0
-    )
-    moduleUI.survivalAddItemButton:SetText("Add Item")
-    moduleUI.survivalAddItemButton:SetScript("OnClick", function()
-        AddSurvivalAction("item")
+    moduleUI.survivalAddActionBox:SetScript("OnEnterPressed", function(self)
+        AddSurvivalAction()
+        self:ClearFocus()
     end)
-    SkinButton(moduleUI.survivalAddItemButton)
+    SkinButton(moduleUI.survivalAddButton)
 
     moduleUI.survivalAddActionStatus = Label(
-        recommendationCard,
+        addCard,
         "",
         "GameFontDisableSmall"
     )
-    moduleUI.survivalAddActionStatus:SetPoint(
-        "BOTTOMLEFT",
-        recommendationCard,
-        "BOTTOMLEFT",
-        16,
-        12
-    )
+    moduleUI.survivalAddActionStatus:SetPoint("TOPLEFT", addCard, "TOPLEFT", 18, -132)
     moduleUI.survivalAddActionStatus:SetWidth(356)
     moduleUI.survivalAddActionStatus:SetJustifyH("LEFT")
 
-    local displayCard = CreateSection(
-        moduleUI.survivalPage,
-        424,
-        -8,
-        394,
-        540,
-        "Trigger / Display",
-        "One HP threshold. The first ready priority action is shown."
-    )
+    local displayCard = alertCard
 
     moduleUI.survivalTriggerSlider = Slider(
-        displayCard,
+        triggerCard,
         "Trigger at HP",
-        18,
-        -78,
-        218,
+        150,
+        -68,
+        162,
         5,
         95,
         1,
@@ -7976,12 +8040,20 @@ local function BuildSurvivalPage()
             end
         end
     )
+    moduleUI.survivalTriggerSlider.Text:Hide()
+    moduleUI.survivalTriggerSlider.Low:Hide()
+    moduleUI.survivalTriggerSlider.High:Hide()
+    local triggerThresholdLabel = Label(triggerCard, "HP threshold", "GameFontHighlight")
+    triggerThresholdLabel:SetPoint("RIGHT", moduleUI.survivalTriggerSlider, "LEFT", -12, 0)
+    triggerThresholdLabel:SetWidth(120)
+    triggerThresholdLabel:SetJustifyH("LEFT")
+    SetFontColor(triggerThresholdLabel, THEME.text)
 
     moduleUI.survivalAlertTypeCheck = Checkbox(
         displayCard,
-        "Use sound alert (unchecked = TTS)",
-        14,
-        -130,
+        "Use sound alert",
+        18,
+        -70,
         function(value)
             if BW.SetSurvivalThresholdAlertType then
                 BW:SetSurvivalThresholdAlertType(value and "sound" or "tts")
@@ -7995,8 +8067,8 @@ local function BuildSurvivalPage()
     moduleUI.survivalTTSContinuousCheck = Checkbox(
         displayCard,
         "Repeat TTS while low HP",
-        14,
-        -160,
+        18,
+        -108,
         function(value)
             if BW.SetSurvivalTTSContinuous then
                 BW:SetSurvivalTTSContinuous(value)
@@ -8008,9 +8080,9 @@ local function BuildSurvivalPage()
 
     moduleUI.survivalSpeakActionNameCheck = Checkbox(
         displayCard,
-        "Speak ready action name",
-        218,
-        -160,
+        "Speak action name",
+        176,
+        -108,
         function(value)
             BW.db.survivalSpeakActionName = value and true or false
         end
@@ -8021,7 +8093,7 @@ local function BuildSurvivalPage()
         "TTS phrase",
         "GameFontHighlightSmall"
     )
-    ttsLabel:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -200)
+    ttsLabel:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -166)
     SetFontColor(ttsLabel, THEME.subtext)
 
     moduleUI.survivalTTSTextBox = CreateFrame(
@@ -8032,7 +8104,7 @@ local function BuildSurvivalPage()
     )
     moduleUI.survivalTTSTextBox:SetSize(250, 28)
     moduleUI.survivalTTSTextBox:SetAutoFocus(false)
-    moduleUI.survivalTTSTextBox:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -220)
+    moduleUI.survivalTTSTextBox:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -186)
     SkinEditBox(moduleUI.survivalTTSTextBox)
 
     local function SaveTTSText()
@@ -8065,13 +8137,7 @@ local function BuildSurvivalPage()
         "UIPanelButtonTemplate"
     )
     moduleUI.survivalTTSTestButton:SetSize(92, 28)
-    moduleUI.survivalTTSTestButton:SetPoint(
-        "LEFT",
-        moduleUI.survivalTTSTextBox,
-        "RIGHT",
-        8,
-        0
-    )
+    moduleUI.survivalTTSTestButton:SetPoint("LEFT", moduleUI.survivalTTSTextBox, "RIGHT", 8, 0)
     moduleUI.survivalTTSTestButton:SetText("Test voice")
     moduleUI.survivalTTSTestButton:SetScript("OnClick", function()
         SaveTTSText()
@@ -8089,23 +8155,23 @@ local function BuildSurvivalPage()
         "",
         "GameFontDisableSmall"
     )
-    moduleUI.survivalTTSStatus:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -254)
+    moduleUI.survivalTTSStatus:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 18, -225)
     moduleUI.survivalTTSStatus:SetWidth(350)
     moduleUI.survivalTTSStatus:SetJustifyH("LEFT")
 
     local alertSoundLabel = Label(
-        displayCard,
+        soundCard,
         "Alert sound",
         "GameFontHighlightSmall"
     )
-    alertSoundLabel:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 218, -274)
+    alertSoundLabel:SetPoint("TOPLEFT", soundCard, "TOPLEFT", 18, -62)
     SetFontColor(alertSoundLabel, THEME.subtext)
 
     moduleUI.survivalAlertSoundDropdown = moduleUI.CreateChoiceDropdown(
-        displayCard,
-        218,
-        -290,
-        158,
+        soundCard,
+        164,
+        -60,
+        208,
         BW.GetSurvivalAlertSoundChoices and BW:GetSurvivalAlertSoundChoices() or {
             { key = "off", label = "Off" },
         },
@@ -8115,28 +8181,36 @@ local function BuildSurvivalPage()
     )
 
     moduleUI.survivalAlertSoundTestButton = CreateFrame(
-        "Button", nil, displayCard, "UIPanelButtonTemplate"
+        "Button", nil, soundCard, "UIPanelButtonTemplate"
     )
-    moduleUI.survivalAlertSoundTestButton:SetSize(158, 28)
+    moduleUI.survivalAlertSoundTestButton:SetSize(208, 28)
     moduleUI.survivalAlertSoundTestButton:SetPoint(
-        "TOPLEFT", displayCard, "TOPLEFT", 218, -322
+        "TOPLEFT", soundCard, "TOPLEFT", 164, -98
     )
     moduleUI.survivalAlertSoundTestButton:SetText("Test alert sound")
     moduleUI.survivalAlertSoundTestButton:SetScript("OnClick", function()
         local worked = BW.TestSurvivalAlertSound and BW:TestSurvivalAlertSound()
-        if moduleUI.survivalTTSStatus then
-            moduleUI.survivalTTSStatus:SetText(worked and "Alert sound played" or "Sound unavailable or set to Off")
-            SetFontColor(moduleUI.survivalTTSStatus, worked and THEME.accent or { 1.00, 0.42, 0.42, 1 })
+        if moduleUI.survivalAlertSoundStatus then
+            moduleUI.survivalAlertSoundStatus:SetText(worked and "Alert sound played" or "Sound unavailable or set to Off")
+            SetFontColor(moduleUI.survivalAlertSoundStatus, worked and THEME.accent or { 1.00, 0.42, 0.42, 1 })
         end
     end)
     SkinButton(moduleUI.survivalAlertSoundTestButton)
+    moduleUI.survivalAlertSoundStatus = Label(
+        soundCard,
+        "",
+        "GameFontDisableSmall"
+    )
+    moduleUI.survivalAlertSoundStatus:SetPoint("TOPLEFT", soundCard, "TOPLEFT", 164, -136)
+    moduleUI.survivalAlertSoundStatus:SetWidth(208)
+    moduleUI.survivalAlertSoundStatus:SetJustifyH("LEFT")
 
     moduleUI.survivalIconSizeSlider = Slider(
-        displayCard,
+        appearanceCard,
         "Icon size",
-        18,
-        -290,
-        130,
+        150,
+        -72,
+        162,
         32,
         100,
         1,
@@ -8145,15 +8219,24 @@ local function BuildSurvivalPage()
         end,
         function(value)
             BW.db.survivalIconSize = value
+            if moduleUI.refreshSurvivalActionRows then moduleUI.refreshSurvivalActionRows() end
             BW:ApplySurvivalSettings()
         end
     )
+    moduleUI.survivalIconSizeSlider.Text:Hide()
+    moduleUI.survivalIconSizeSlider.Low:Hide()
+    moduleUI.survivalIconSizeSlider.High:Hide()
+    local survivalIconSizeLabel = Label(appearanceCard, "Icon size", "GameFontHighlight")
+    survivalIconSizeLabel:SetPoint("RIGHT", moduleUI.survivalIconSizeSlider, "LEFT", -12, 0)
+    survivalIconSizeLabel:SetWidth(120)
+    survivalIconSizeLabel:SetJustifyH("LEFT")
+    SetFontColor(survivalIconSizeLabel, THEME.text)
 
     moduleUI.survivalUnlockCheck = Checkbox(
-        displayCard,
+        appearanceCard,
         "Unlock display to drag",
-        14,
-        -344,
+        18,
+        -116,
         function(value)
             if BW.SetSurvivalUnlocked then
                 BW:SetSurvivalUnlocked(value)
@@ -8162,35 +8245,37 @@ local function BuildSurvivalPage()
     )
 
     moduleUI.survivalShowLabelCheck = Checkbox(
-        displayCard,
+        appearanceCard,
         "Show action name",
-        14,
-        -374,
+        18,
+        -148,
         function(value)
             BW.db.survivalShowLabel = value
+            if moduleUI.refreshSurvivalActionRows then moduleUI.refreshSurvivalActionRows() end
             BW:ApplySurvivalSettings()
         end
     )
 
     moduleUI.survivalShowAllReadyActionsCheck = Checkbox(
-        displayCard,
+        appearanceCard,
         "Show all ready actions",
-        14,
-        -464,
+        18,
+        -180,
         function(value)
             BW.db.survivalShowAllReadyActions = value and true or false
             if moduleUI.survivalReadyActionsGrowthDropdown then
                 moduleUI.survivalReadyActionsGrowthDropdown:SetEnabledState(value)
             end
+            if moduleUI.refreshSurvivalActionRows then moduleUI.refreshSurvivalActionRows() end
             BW:ApplySurvivalSettings()
         end
     )
 
     moduleUI.survivalReadyActionsGrowthDropdown = moduleUI.CreateChoiceDropdown(
-        displayCard,
-        14,
-        -494,
-        158,
+        appearanceCard,
+        164,
+        -212,
+        208,
         {
             { key = "left", label = "Grow left" },
             { key = "right", label = "Grow right" },
@@ -8199,15 +8284,21 @@ local function BuildSurvivalPage()
         },
         function(value)
             BW.db.survivalReadyActionsGrowth = value
+            if moduleUI.refreshSurvivalActionRows then moduleUI.refreshSurvivalActionRows() end
             BW:ApplySurvivalSettings()
         end
     )
+    local growthLabel = Label(appearanceCard, "Ready action growth", "GameFontHighlight")
+    growthLabel:SetPoint("LEFT", moduleUI.survivalReadyActionsGrowthDropdown, "LEFT", -146, 0)
+    growthLabel:SetWidth(136)
+    growthLabel:SetJustifyH("LEFT")
+    SetFontColor(growthLabel, THEME.text)
 
     moduleUI.survivalOnlyCombatCheck = Checkbox(
-        displayCard,
+        triggerCard,
         "Only show in combat",
-        14,
-        -404,
+        18,
+        -106,
         function(value)
             BW.db.survivalOnlyInCombat = value
             BW:ApplySurvivalSettings()
@@ -8215,10 +8306,10 @@ local function BuildSurvivalPage()
     )
 
     moduleUI.survivalOnlyInstanceCheck = Checkbox(
-        displayCard,
+        triggerCard,
         "Only show in instances",
-        14,
-        -434,
+        18,
+        -138,
         function(value)
             BW.db.survivalOnlyInInstance = value
             BW:ApplySurvivalSettings()
@@ -8226,10 +8317,10 @@ local function BuildSurvivalPage()
     )
 
     moduleUI.survivalGlowCheck = Checkbox(
-        displayCard,
+        appearanceCard,
         "Glow icon when active",
-        218,
-        -360,
+        18,
+        -248,
         function(value)
             if BW.SetSurvivalGlowEnabled then
                 BW:SetSurvivalGlowEnabled(value)
@@ -8237,29 +8328,19 @@ local function BuildSurvivalPage()
                 BW.db.survivalGlowEnabled = value and true or false
                 BW:ApplySurvivalSettings()
             end
+            if moduleUI.refreshSurvivalActionRows then moduleUI.refreshSurvivalActionRows() end
         end
     )
 
-    moduleUI.survivalDeathSoundCard = CreateFrame(
-        "Frame", nil, displayCard, "BackdropTemplate"
+    moduleUI.survivalDeathSoundCard = CreateSection(
+        priorityPage, 14, -480, 804, 110,
+        "Group death sound", "Separate from Survival action alerts."
     )
-    moduleUI.survivalDeathSoundCard:SetPoint("TOPLEFT", displayCard, "TOPLEFT", 210, -402)
-    moduleUI.survivalDeathSoundCard:SetSize(170, 130)
-    ApplyBackdrop(moduleUI.survivalDeathSoundCard, THEME.panelAlt, THEME.border)
-
-    local deathSoundTitle = Label(
-        moduleUI.survivalDeathSoundCard,
-        "Group Death Sound",
-        "GameFontHighlightSmall"
-    )
-    deathSoundTitle:SetPoint("TOPLEFT", moduleUI.survivalDeathSoundCard, "TOPLEFT", 10, -8)
-    SetFontColor(deathSoundTitle, THEME.subtext)
-
     moduleUI.survivalDeathSoundCheck = Checkbox(
         moduleUI.survivalDeathSoundCard,
         "Enabled",
-        8,
-        -31,
+        0,
+        0,
         function(value)
             if BW.SetSurvivalDeathSoundEnabled then
                 BW:SetSurvivalDeathSoundEnabled(value)
@@ -8268,12 +8349,19 @@ local function BuildSurvivalPage()
             end
         end
     )
+    moduleUI.survivalDeathSoundCheck:ClearAllPoints()
+    moduleUI.survivalDeathSoundCheck:SetPoint("TOPRIGHT", moduleUI.survivalDeathSoundCard, "TOPRIGHT", -18, -15)
+    moduleUI.survivalDeathSoundCheck.Label:Hide()
+    local deathSoundEnabledLabel = Label(moduleUI.survivalDeathSoundCard, "Enabled", "GameFontHighlightSmall")
+    deathSoundEnabledLabel:SetPoint("TOP", moduleUI.survivalDeathSoundCheck, "BOTTOM", 0, -2)
+    deathSoundEnabledLabel:SetJustifyH("CENTER")
+    SetFontColor(deathSoundEnabledLabel, THEME.subtext)
 
     moduleUI.survivalDeathSoundDropdown = moduleUI.CreateChoiceDropdown(
         moduleUI.survivalDeathSoundCard,
-        8,
-        -52,
-        154,
+        18,
+        -58,
+        210,
         BW.GetSurvivalDeathSoundChoices and BW:GetSurvivalDeathSoundChoices() or {
             { key = "Quest Failed", label = "Quest Failed" },
         },
@@ -8292,15 +8380,9 @@ local function BuildSurvivalPage()
         moduleUI.survivalDeathSoundCard,
         "UIPanelButtonTemplate"
     )
-    moduleUI.survivalDeathSoundTestButton:SetSize(154, 28)
-    moduleUI.survivalDeathSoundTestButton:SetPoint(
-        "TOPLEFT",
-        moduleUI.survivalDeathSoundCard,
-        "TOPLEFT",
-        8,
-        -84
-    )
-    moduleUI.survivalDeathSoundTestButton:SetText("Test death sound")
+    moduleUI.survivalDeathSoundTestButton:SetSize(126, 28)
+    moduleUI.survivalDeathSoundTestButton:SetPoint("LEFT", moduleUI.survivalDeathSoundDropdown, "RIGHT", 8, 0)
+    moduleUI.survivalDeathSoundTestButton:SetText("Test")
     moduleUI.survivalDeathSoundTestButton:SetScript("OnClick", function()
         if BW.TestSurvivalDeathSound then
             BW:TestSurvivalDeathSound()
@@ -8311,11 +8393,11 @@ local function BuildSurvivalPage()
     local reset = CreateFrame(
         "Button",
         nil,
-        moduleUI.survivalPanel,
+        appearanceCard,
         "UIPanelButtonTemplate"
     )
     reset:SetSize(124, 28)
-    reset:SetPoint("LEFT", moduleUI.survivalPageEnabledCheck, "LEFT", 340, 0)
+    reset:SetPoint("TOPLEFT", appearanceCard, "TOPLEFT", 18, -292)
     reset:SetText("Reset position")
     reset:SetScript("OnClick", function()
         if BW.ResetSurvivalPosition then
@@ -8325,34 +8407,35 @@ local function BuildSurvivalPage()
     SkinButton(reset)
 
     moduleUI.survivalStatusText = Label(
-        moduleUI.survivalPage,
+        triggerCard,
         "",
         "GameFontHighlightSmall"
     )
-    moduleUI.survivalStatusText:SetPoint("TOPLEFT", moduleUI.survivalPage, "TOPLEFT", 20, -526)
-    moduleUI.survivalStatusText:SetWidth(790)
+    moduleUI.survivalStatusText:SetPoint("TOPLEFT", triggerCard, "TOPLEFT", 18, -170)
+    moduleUI.survivalStatusText:SetWidth(354)
     moduleUI.survivalStatusText:SetJustifyH("LEFT")
     SetFontColor(moduleUI.survivalStatusText, THEME.accent)
 
     moduleUI.survivalDetectedText = Label(
-        moduleUI.survivalPage,
+        triggerCard,
         "",
         "GameFontHighlightSmall"
     )
-    moduleUI.survivalDetectedText:SetPoint("TOPLEFT", moduleUI.survivalPage, "TOPLEFT", 20, -548)
-    moduleUI.survivalDetectedText:SetWidth(790)
+    moduleUI.survivalDetectedText:SetPoint("TOPLEFT", triggerCard, "TOPLEFT", 18, -190)
+    moduleUI.survivalDetectedText:SetWidth(354)
     moduleUI.survivalDetectedText:SetJustifyH("LEFT")
     SetFontColor(moduleUI.survivalDetectedText, THEME.subtext)
 
-    local note = Label(
-        moduleUI.survivalPage,
-        "Example: if Desperate Prayer is first but on cooldown, Kaylii immediately checks the next row, then the next, until it finds something ready. If nothing is ready, no icon is shown.",
-        "GameFontHighlightSmall"
-    )
-    note:SetPoint("TOPLEFT", moduleUI.survivalPage, "TOPLEFT", 20, -574)
-    note:SetWidth(790)
-    note:SetJustifyH("LEFT")
-    SetFontColor(note, THEME.subtext)
+    AlignSurvivalToggle(moduleUI.survivalAlertTypeCheck, alertCard, -66)
+    AlignSurvivalToggle(moduleUI.survivalTTSContinuousCheck, alertCard, -100)
+    AlignSurvivalToggle(moduleUI.survivalSpeakActionNameCheck, alertCard, -134)
+    AlignSurvivalToggle(moduleUI.survivalOnlyCombatCheck, triggerCard, -106)
+    AlignSurvivalToggle(moduleUI.survivalOnlyInstanceCheck, triggerCard, -138)
+    AlignSurvivalToggle(moduleUI.survivalUnlockCheck, appearanceCard, -116)
+    AlignSurvivalToggle(moduleUI.survivalShowLabelCheck, appearanceCard, -148)
+    AlignSurvivalToggle(moduleUI.survivalShowAllReadyActionsCheck, appearanceCard, -180)
+    AlignSurvivalToggle(moduleUI.survivalGlowCheck, appearanceCard, -248)
+
 end
 
 local function BuildTalentLoadoutPage()
@@ -8391,7 +8474,6 @@ local function BuildTalentLoadoutPage()
     desc:SetWidth(760)
     desc:SetJustifyH("LEFT")
     SetFontColor(desc, THEME.subtext)
-
     moduleUI.talentPageEnabledCheck = Checkbox(
         moduleUI.talentPanel,
         "Enable Talent Loadout module",
@@ -8401,15 +8483,19 @@ local function BuildTalentLoadoutPage()
             BW:SetTalentLoadoutEnabled(value)
         end
     )
+    moduleUI.ApplyModuleHeader(
+        moduleUI.talentPanel, title, desc, moduleUI.talentPageEnabledCheck, moduleStatus,
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavTalent.tga"
+    )
 
     moduleUI.talentPage = CreateFrame("Frame", nil, moduleUI.talentPanel)
-    moduleUI.talentPage:SetPoint("TOPLEFT", moduleUI.talentPanel, "TOPLEFT", 0, -112)
+    moduleUI.talentPage:SetPoint("TOPLEFT", moduleUI.talentPanel, "TOPLEFT", 0, -96)
     moduleUI.talentPage:SetPoint("BOTTOMRIGHT", moduleUI.talentPanel, "BOTTOMRIGHT", 0, 0)
 
     local displayCard = CreateSection(
         moduleUI.talentPage,
         14,
-        -8,
+        -4,
         394,
         292,
         "Display",
@@ -8582,14 +8668,13 @@ local function BuildRaidFrameSpecPage()
 
     local desc = Label(
         moduleUI.raidSpecPanel,
-        "Save per-spec Raid and Party overrides while preserving Ellesmere defaults. Use the tabs below to edit one frame type at a time.",
+        "Save raid and party frame positions per specialization.",
         "GameFontHighlight"
     )
     desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
     desc:SetWidth(760)
     desc:SetJustifyH("LEFT")
     SetFontColor(desc, THEME.subtext)
-
     moduleUI.raidSpecPageEnabledCheck = Checkbox(
         moduleUI.raidSpecPanel,
         "Enable Raid Frame Spec module",
@@ -8599,14 +8684,25 @@ local function BuildRaidFrameSpecPage()
             if BW.SetRaidFrameSpecEnabled then BW:SetRaidFrameSpecEnabled(value) end
         end
     )
+    moduleUI.ApplyModuleHeader(
+        moduleUI.raidSpecPanel, title, desc, moduleUI.raidSpecPageEnabledCheck, moduleStatus,
+        "Interface\\AddOns\\KayliiHelper\\Media\\NavRaid.tga"
+    )
+    moduleUI.raidSpecRequirementText = Label(
+        moduleUI.raidSpecPanel,
+        "Requires Ellesmere Frames",
+        "GameFontHighlightSmall"
+    )
+    moduleUI.raidSpecRequirementText:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -2)
+    SetFontColor(moduleUI.raidSpecRequirementText, THEME.accentHover)
 
     moduleUI.raidSpecPage = CreateFrame("Frame", nil, moduleUI.raidSpecPanel)
-    moduleUI.raidSpecPage:SetPoint("TOPLEFT", moduleUI.raidSpecPanel, "TOPLEFT", 0, -112)
+    moduleUI.raidSpecPage:SetPoint("TOPLEFT", moduleUI.raidSpecPanel, "TOPLEFT", 0, -96)
     moduleUI.raidSpecPage:SetPoint("BOTTOMRIGHT", moduleUI.raidSpecPanel, "BOTTOMRIGHT", 0, 0)
 
     local manageCard = CreateSection(
         moduleUI.raidSpecPage,
-        14, -8, 804, 126,
+        14, -4, 804, 126,
         "Managed Frames",
         "Choose which Ellesmere group-frame containers should automatically follow your specialization."
     )
@@ -8994,7 +9090,7 @@ local function BuildRaidFrameSpecPage()
 
 end
 
-local settingsLauncherSuppressAutoOpen = false
+moduleUI.settingsLauncherSuppressAutoOpen = false
 
 local function ResetBlizzardSettingsSelection()
     -- Settings.OpenToCategory accepts no category and opens the normal
@@ -9022,7 +9118,7 @@ local function CloseBlizzardSettings()
     -- Kaylii Helper is a standalone UIParent window, so closing Blizzard's
     -- Settings panel does not close our configuration window.
     if SettingsPanel and SettingsPanel:IsShown() then
-        settingsLauncherSuppressAutoOpen = true
+        moduleUI.settingsLauncherSuppressAutoOpen = true
         ResetBlizzardSettingsSelection()
 
         -- Let Blizzard commit the category change first, then close Settings.
@@ -9036,7 +9132,7 @@ local function CloseBlizzardSettings()
             end
 
             C_Timer.After(0, function()
-                settingsLauncherSuppressAutoOpen = false
+                moduleUI.settingsLauncherSuppressAutoOpen = false
             end)
         end)
         return
@@ -9044,7 +9140,7 @@ local function CloseBlizzardSettings()
 
     -- Legacy/fallback name for older client UI layouts.
     if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then
-        settingsLauncherSuppressAutoOpen = true
+        moduleUI.settingsLauncherSuppressAutoOpen = true
 
         if HideUIPanel then
             HideUIPanel(InterfaceOptionsFrame)
@@ -9053,13 +9149,13 @@ local function CloseBlizzardSettings()
         end
 
         C_Timer.After(0, function()
-            settingsLauncherSuppressAutoOpen = false
+            moduleUI.settingsLauncherSuppressAutoOpen = false
         end)
     end
 end
 
 local function OpenFromBlizzardSettings(view)
-    if settingsLauncherSuppressAutoOpen then
+    if moduleUI.settingsLauncherSuppressAutoOpen then
         return
     end
 
@@ -9144,13 +9240,13 @@ local function CreateSettingsLauncher(
     hint:SetJustifyH("LEFT")
 
     frame:SetScript("OnShow", function()
-        if settingsLauncherSuppressAutoOpen then
+        if moduleUI.settingsLauncherSuppressAutoOpen then
             return
         end
 
         C_Timer.After(0, function()
             if frame:IsShown()
-                and not settingsLauncherSuppressAutoOpen then
+                and not moduleUI.settingsLauncherSuppressAutoOpen then
 
                 OpenFromBlizzardSettings(view)
             end
@@ -9257,10 +9353,10 @@ local function FinalizeOptions(self)
         self.settingsPanelOpenGuardHooked = true
 
         SettingsPanel:HookScript("OnShow", function()
-            settingsLauncherSuppressAutoOpen = true
+            moduleUI.settingsLauncherSuppressAutoOpen = true
 
             C_Timer.After(0, function()
-                settingsLauncherSuppressAutoOpen = false
+                moduleUI.settingsLauncherSuppressAutoOpen = false
             end)
         end)
     end

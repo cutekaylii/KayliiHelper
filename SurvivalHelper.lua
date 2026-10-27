@@ -1343,8 +1343,36 @@ function BW:AddSurvivalAction(actionType, value)
     EnsureActionStorage()
 
     actionType = tostring(actionType or ""):lower()
+    if actionType == "auto" then
+        local text = tostring(value or "")
+        local loweredText = text:lower()
+        if loweredText:find("|hitem:", 1, true) or loweredText:match("^item:") then
+            actionType = "item"
+        elseif loweredText:find("|hspell:", 1, true) or loweredText:match("^spell:") then
+            actionType = "spell"
+        else
+            local actionID = ParseActionID(text, "spell") or ParseActionID(text, "item")
+            if not actionID then
+                return false, "Enter a spell/item ID or paste its link."
+            end
+
+            local spellName = SpellName(actionID)
+            local itemName = ItemName(actionID)
+            local isSpell = spellName ~= "Spell " .. tostring(actionID)
+            local isItem = itemName ~= "Item"
+            if isSpell and isItem then
+                return false, "This ID matches both. Paste the spell or item link to choose."
+            elseif isSpell then
+                actionType = "spell"
+            elseif isItem then
+                actionType = "item"
+            else
+                return false, "Couldn't identify that ID. Paste its spell or item link."
+            end
+        end
+    end
     if actionType ~= "spell" and actionType ~= "item" then
-        return false, "Choose Spell or Item."
+        return false, "Enter a spell/item ID or paste its link."
     end
 
     local actionID = ParseActionID(value, actionType)

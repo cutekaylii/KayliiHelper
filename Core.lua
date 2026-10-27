@@ -119,6 +119,7 @@ local defaults = {
     statsFontSize = 14,
     statsOrientation = "horizontal",
     statsTextAlign = "center",
+    statsVerticalAlign = "middle",
     statsShowCrit = true,
     statsShowHaste = true,
     statsShowMastery = true,
